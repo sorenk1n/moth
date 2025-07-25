@@ -53,6 +53,44 @@
             color: #3eaf7c;
         }
 
+        .container {
+            display: flex;
+            overflow-x: auto; /* 允许内容水平滚动 */
+            white-space: nowrap; /* 禁止换行 */
+            scroll-snap-type: x mandatory; /* 在滚动时强制对齐 snap-points */
+            -ms-overflow-style: none; /* Internet Explorer 10+ */
+            scrollbar-width: none; /* Firefox */
+        }
+
+        .container::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+        }
+
+        .container::-webkit-scrollbar-track,
+        .container::-webkit-scrollbar-thumb {
+            display: none;
+        }
+
+
+        .item {
+            flex: 0 0 calc(100% / 10); /* 每个元素宽度为容器的十分之一 */
+            scroll-snap-align: start;
+            box-sizing: border-box;
+            text-align: center;
+            border-radius: 5px;
+            margin-right: 5px;
+        }
+
+        .book_desc {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            white-space: pre-wrap;
+        }
+
     </style>
 
 
@@ -107,60 +145,58 @@
             精品推荐
         </blockquote>
 
+        <div class="container" style="padding-bottom: 10px">
 
-        <div class="layui-container" style="padding: 0px">
+            <div class="item" style="position: relative;padding:1%;" th:if="${bookMap['4']}" th:each="book,iterStat:${bookMap['4']}">
+                <a th:href="'/book/'+${book.bookId}+'.html'">
 
-            <div class="layui-row" style="text-align: center" id="currentWeek" th:if="${bookMap['4']}">
-                    <span th:each="book,iterStat : ${bookMap['4']}" th:if="${iterStat.index<3}">
-                        <a th:href="'/book/'+${book.bookId}+'.html'">
-                            <div style="padding: 1%" class="layui-col-xs4 layui-col-sm4 layui-col-md4 layui-col-lg4">
-                                <img style=" width:100px; height:125px; max-width:100%; max-height:100%;"
-                                     th:src="${book.picUrl}">
+                    <img style=" width:100px; height:125px; max-width:100%; max-height:100%;"
+                         th:src="${book.picUrl}">
+                    <br>
+                    <span style="width: 100px" class="book_name" th:text="${book.bookName}"></span>
 
-                                <br>
-                                <span th:text="${#strings.length(book.bookName) > 5}? (${#strings.substring(book.bookName,0,5)}+'...'): ${book.bookName}  "></span>
+                </a>
 
-                            </div>
-                        </a>
-                   </span>
             </div>
         </div>
     </div>
-    <div class="layui-colla-item">
-        <blockquote class="layui-elem-quote" style="text-align: left;font-size: 16px">
-            热门推荐
-        </blockquote>
-
-        <div class="layui-container">
-            <div class="layui-row" id="hotRecBooks" th:if="${bookMap['3']}">
-                <div th:each="book,iterStat : ${bookMap['3']}" th:if="${iterStat.index<6}" style="margin-bottom: 5px"
-                     class="layui-col-xs12 layui-col-sm6 layui-col-md4 layui-col-lg4">
-                    <a th:href="'/book/'+${book.bookId}+'.html'">
-                        <div class="layui-col-xs5 layui-col-sm4 layui-col-md4 layui-col-lg4">
-                            <img style=" width:100px; height:125px;" th:src="${book.picUrl}">
-
-                        </div>
-                        <div class="layui-col-xs5 layui-col-sm6 layui-col-md6 layui-col-lg6">
-                            <ul>
-                                <li style="padding-bottom: 2px" class="line-limit-length"
-                                    th:text="${book.bookName}"></li>
-                                <li style="padding-bottom: 2px;color: #a6a6a6" th:text="'作者：'+${book.authorName}"></li>
-                                <li style="color: #a6a6a6;width: 180px;height:60px;overflow: hidden"
-                                    th:utext="${book.bookDesc}"></li>
-                            </ul>
-                        </div>
-                        <div style="font-style: italic;color: red"
-                             class="layui-col-xs2 layui-col-sm2 layui-col-md2 layui-col-lg2"></div>
-                    </a>
-                </div>
 
 
-            </div>
-
-        </div>
-
-    </div>
 </div>
+<div style="clear: both"></div>
+<div class="layui-colla-item">
+    <blockquote class="layui-elem-quote" style="text-align: left;font-size: 16px">
+        热门推荐
+    </blockquote>
+
+    <div class="layui-container">
+        <div class="layui-row" id="hotRecBooks" th:if="${bookMap['3']}">
+            <div th:each="book,iterStat : ${bookMap['3']}" th:if="${iterStat.index<6}" style="margin-bottom: 5px"
+                 class="layui-col-xs12 layui-col-sm6 layui-col-md4 layui-col-lg4">
+                <a th:href="'/book/'+${book.bookId}+'.html'">
+                    <div class="layui-col-xs4 layui-col-sm4 layui-col-md4 layui-col-lg4">
+                        <img style=" width:100px; height:125px;" th:src="${book.picUrl}">
+
+                    </div>
+                    <div class="layui-col-xs8 layui-col-sm8 layui-col-md8 layui-col-lg8">
+                        <ul>
+                            <li style="padding-bottom: 5px" class="line-limit-length"
+                                th:text="${book.bookName}"></li>
+                            <li style="padding-bottom: 5px;color: #a6a6a6" th:text="'作者：'+${book.authorName}"></li>
+                            <li class='book_desc' style="color: #a6a6a6;padding-right:10px;"
+                                th:utext="${book.bookDesc}"></li>
+                        </ul>
+                    </div>
+                    <div style="font-style: italic;color: red"
+                         class="layui-col-xs2 layui-col-sm2 layui-col-md2 layui-col-lg2"></div>
+                </a>
+            </div>
+
+
+        </div>
+
+    </div>
+
 </div>
 <div style="clear: both"></div>
 <div style="height: 1px" class="layui-col-lg1"></div>
@@ -183,7 +219,6 @@
         </div>
 
     </div>
-</div>
 </div>
 
 <div style="clear: both"></div>
@@ -226,7 +261,7 @@
                         "\n" +
                         "                        <div style=\"clear: both\"></div>\n" +
                         "                        <div style=\"color: #a6a6a6;padding-left: 5px;padding-top: 5px\"\n" +
-                        "                             class=\"layui-elip layui-col-md11 layui-col-sm11 layui-col-lg11\">简介：　　" + updateRankBook.bookDesc + "" +
+                        "                             class=\"layui-elip layui-col-md11 layui-col-sm11 layui-col-lg11\">简介：" + updateRankBook.bookDesc + "" +
                         "                    </div></a>\n" +
                         "                </div>");
 
