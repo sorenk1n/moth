@@ -28,6 +28,41 @@ crawl:
     max: 500
 
 
+---
 
+#邮箱服务器
+spring:
+  mail:
+    host: smtp.163.com
+    #发件人昵称
+    nickname: novel-plus
+    #邮箱账户
+    username: xxyopen@163.com
+    #邮箱第三方授权码
+    password: novel123456
+    #编码类型
+    default-encoding: UTF-8
+    port: 465
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: rue
+          socketFactory:
+            port: 465
+            class: javax.net.ssl.SSLSocketFactory
+            fallback: false
+
+# 磁盘监控配置
+disk-monitor:
+  enabled: false
+  interval-minutes: 5
+  warning-threshold: 85.0
+  severe-threshold: 90.0
+  critical-threshold: 95.0
+  # 告警邮件接收人列表（支持多个邮箱）
+  recipients: xxyopen@foxmail.com,12345678@qq.com
 
 
