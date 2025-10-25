@@ -118,9 +118,10 @@
 <script language="javascript" type="text/javascript">
     let curr = 1;
     let limit = 10;
+    let isUpdate = false;
 
     search();
-    setInterval(function(){
+    setInterval(function () {
         search();
     }, 10000);
 
@@ -185,6 +186,7 @@
                                     if (!first) {
                                         curr = obj.curr;
                                         limit = obj.limit;
+                                        isUpdate = false;
                                         search();
                                     } else {
 
@@ -196,13 +198,21 @@
                     }
 
 
-                } else {
+                } else if (data.code == 1001) {
+                    //未登录
+                    location.href = '/user/login.html?originUrl=' + encodeURIComponent(location.href);
+
+                } else if (!isUpdate) {
                     layer.alert(data.msg);
                 }
+                isUpdate = true;
 
             },
             error: function () {
-                layer.alert('网络异常');
+                if (!isUpdate) {
+                    layer.alert('网络异常');
+                }
+                isUpdate = true;
             }
         })
 
