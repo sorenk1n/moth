@@ -45,3 +45,31 @@ http:
     username: bestproxy_u
     # 代理密码
     password: bestproxy_p
+
+---
+
+#邮箱服务器
+spring:
+  mail:
+    host: smtp.163.com
+    #发件人昵称
+    nickname: novel-plus
+    #邮箱账户
+    username: xxyopen@163.com
+    #邮箱第三方授权码
+    password: novel123456
+
+
+# 磁盘监控配置
+disk-monitor:
+  # 是否开启磁盘监控，true-开启，false-不启用
+  enabled: false
+  # 磁盘监控间隔时间（分钟）
+  interval-minutes: 5
+  # 磁盘使用率阈值
+  warning-threshold: 85.0
+  severe-threshold: 90.0
+  critical-threshold: 95.0
+  # 告警邮件接收人列表（支持多个邮箱）
+  recipients: xxyopen@foxmail.com,12345678@qq.com
+
