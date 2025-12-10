@@ -35,6 +35,8 @@ public class XssFilter implements Filter {
             chain.doFilter(xssRequestWrapper, response);
         }
     }
+    
+    // test
 
     @Override
     public void init(FilterConfig arg0) {
