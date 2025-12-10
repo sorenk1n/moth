@@ -36,6 +36,8 @@ public class XssFilter implements Filter {
         }
     }
 
+    // test
+
     @Override
     public void init(FilterConfig arg0) {
         // TODO Auto-generated method stub
