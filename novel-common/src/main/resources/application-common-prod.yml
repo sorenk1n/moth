@@ -6,11 +6,11 @@ spring:
   data:
     redis:
       #Redis服务器IP
-      host: 127.0.0.1
+      host: redis
       #Redis服务器连接端口
       port: 6379
       #Redis服务器连接密码
-      password: test123456
+      password: 123456
       #连接超时时间（毫秒）
       timeout: 10000
 

@@ -98,10 +98,10 @@
    - 文件：`novel-admin/src/main/resources/application-dev.yml`
      - `java2nb.uploadPath` 默认 `/var/pic/`，建议改为 `D:/novel/admin_upload/` 或类似路径。
    - 文件：`novel-admin/src/main/resources/application.yml`
-     - 默认端口 `server.port: 80`，开发环境建议改为非 80 端口（如 `8082`），避免权限问题：
+     - 默认端口 `server.port: 80`，开发环境建议改为非 80 端口（如 `8085`），避免权限问题：
        ```yaml
        server:
-         port: 8082
+         port: 8085
        ```
 
 4. AI / 支付 / OSS（可选）：
@@ -145,7 +145,7 @@ mvn clean package -DskipTests
 启动成功后，控制台会打印类似：
 
 - 前台：`http://<your-ip>:8083`
-- 后台：`http://<your-ip>:8082`（或你配置的端口）
+- 后台：`http://<your-ip>:8085`（或你配置的端口）
 - 爬虫：`http://<your-ip>:8081`
 
 #### 2.5.2 使用 JAR 直接运行
@@ -403,4 +403,3 @@ pnpm run build
   - 不要在本项目新增文档或脚本中使用 `npm` 命令。
 
 编写或修改代码时，如有与本文不一致的地方，以本 AGENTS 文档为准进行统一。若增加新的模块或重要依赖，建议同步更新本文件。
-
