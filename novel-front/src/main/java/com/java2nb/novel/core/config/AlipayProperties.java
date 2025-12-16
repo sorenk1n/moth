@@ -20,4 +20,9 @@ public class AlipayProperties {
     private String signType;
     private String charset;
     private String gatewayUrl;
+    /**
+     * 自定义验签：md5(md5Key:timeStamp) 后再用 AES 加密得到 visitAuth
+     */
+    private String md5Key;
+    private String aesKey;
 }

@@ -17,14 +17,21 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.TreeMap;
+import java.util.Base64;
 
 /**
  * @author 11797
@@ -48,6 +55,21 @@ public class PayController extends BaseController {
     @PostMapping("aliPay")
     public void aliPay(Integer payAmount, HttpServletRequest request, HttpServletResponse httpResponse) {
 
+        if (!verifyVisitAuth(request, httpResponse)) {
+            return;
+        }
+        if (payAmount == null || payAmount <= 0) {
+            httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "payAmount is required");
+            return;
+        }
+
+        // 下单自定义字段（供透传或日志使用，未参与支付宝金额计算）
+        String merchantSubject = Optional.ofNullable(request.getParameter("merchantSubject")).orElse("fireflynovel");
+        String body = Optional.ofNullable(request.getParameter("body")).orElse("fireflynovel");
+        String passbackParams = buildPassbackParams(request);
+        String returnUrl = StringUtils.isNotBlank(request.getParameter("returnUrl")) ? request.getParameter("returnUrl")
+            : alipayConfig.getReturnUrl();
+
         UserDetails userDetails = getUserDetails(request);
         if (userDetails == null) {
             //未登录，跳转到登录页面
@@ -63,7 +85,7 @@ public class PayController extends BaseController {
             if (ThreadLocalUtil.getTemplateDir().contains("mobile")) {
                 // 手机站
                 AlipayTradeWapPayRequest alipayRequest = new AlipayTradeWapPayRequest();
-                alipayRequest.setReturnUrl(alipayConfig.getReturnUrl());
+                alipayRequest.setReturnUrl(returnUrl);
                 //在公共参数中设置回跳和通知地址
                 alipayRequest.setNotifyUrl(alipayConfig.getNotifyUrl());
                 /******必传参数******/
@@ -73,7 +95,9 @@ public class PayController extends BaseController {
                 //支付金额，最小值0.01元
                 bizContent.put("total_amount", payAmount);
                 //订单标题，不可使用特殊符号
-                bizContent.put("subject", "fireflynovel");
+                bizContent.put("subject", merchantSubject);
+                bizContent.put("body", body);
+                bizContent.put("passback_params", passbackParams);
 
                 /******可选参数******/
                 //手机网站支付默认传值FAST_INSTANT_TRADE_PAY
@@ -86,7 +110,7 @@ public class PayController extends BaseController {
                 // 电脑站
                 //创建API对应的request
                 AlipayTradePagePayRequest alipayRequest = new AlipayTradePagePayRequest();
-                alipayRequest.setReturnUrl(alipayConfig.getReturnUrl());
+                alipayRequest.setReturnUrl(returnUrl);
                 //在公共参数中设置回跳和通知地址
                 alipayRequest.setNotifyUrl(alipayConfig.getNotifyUrl());
                 //填充业务参数
@@ -94,7 +118,9 @@ public class PayController extends BaseController {
                     "    \"out_trade_no\":\"" + outTradeNo + "\"," +
                     "    \"product_code\":\"FAST_INSTANT_TRADE_PAY\"," +
                     "    \"total_amount\":" + payAmount + "," +
-                    "    \"subject\":\"fireflynovel\"" +
+                    "    \"subject\":\"" + merchantSubject + "\"," +
+                    "    \"body\":\"" + body + "\"," +
+                    "    \"passback_params\":\"" + passbackParams + "\"" +
                     "  }");
                 //调用SDK生成表单
                 AlipayTradePagePayResponse payResponse = alipayClient.pageExecute(alipayRequest);
@@ -166,4 +192,72 @@ public class PayController extends BaseController {
 
     }
 
+    private boolean verifyVisitAuth(HttpServletRequest request, HttpServletResponse httpResponse) throws Exception {
+        String timeStamp = request.getHeader("timeStamp");
+        String visitAuth = request.getHeader("visitAuth");
+        if (StringUtils.isAnyBlank(timeStamp, visitAuth)) {
+            httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "missing timeStamp/visitAuth");
+            return false;
+        }
+        if (StringUtils.isAnyBlank(alipayConfig.getMd5Key(), alipayConfig.getAesKey())) {
+            httpResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "pay secret is not configured");
+            return false;
+        }
+
+        String md5 = DigestUtils.md5Hex(alipayConfig.getMd5Key() + ":" + timeStamp);
+        String expected = encryptAes(md5, alipayConfig.getAesKey());
+        if (!StringUtils.equals(visitAuth, expected)) {
+            httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED, "invalid visitAuth");
+            return false;
+        }
+        return true;
+    }
+
+    private String encryptAes(String data, String key) throws Exception {
+        SecretKeySpec keySpec = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "AES");
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        byte[] encrypted = cipher.doFinal(data.getBytes(StandardCharsets.UTF_8));
+        return Base64.getEncoder().encodeToString(encrypted);
+    }
+
+    /**
+     * 将请求中的附加字段透传到 passback_params，便于异步通知时取回
+     */
+    private String buildPassbackParams(HttpServletRequest request) {
+        // 按字典序，便于排查
+        Map<String, String> extra = new TreeMap<>();
+        addIfPresent(extra, "payChannel", request.getParameter("payChannel"));
+        addIfPresent(extra, "typeIndex", request.getParameter("typeIndex"));
+        addIfPresent(extra, "isUseFundAuth", request.getParameter("isUseFundAuth"));
+        addIfPresent(extra, "cyclePayAuthAgreementNo", request.getParameter("cyclePayAuthAgreementNo"));
+        addIfPresent(extra, "externalId", request.getParameter("externalId"));
+        addIfPresent(extra, "merchantTradeNo", request.getParameter("merchantTradeNo"));
+        addIfPresent(extra, "externalGoodsType", request.getParameter("externalGoodsType"));
+        addIfPresent(extra, "timeExpire", request.getParameter("timeExpire"));
+        addIfPresent(extra, "buyerId", request.getParameter("buyerId"));
+        addIfPresent(extra, "buyerMinAge", request.getParameter("buyerMinAge"));
+        addIfPresent(extra, "merchantPayNotifyUrl", request.getParameter("merchantPayNotifyUrl"));
+        addIfPresent(extra, "quitUrl", request.getParameter("quitUrl"));
+        addIfPresent(extra, "returnUrl", request.getParameter("returnUrl"));
+        addIfPresent(extra, "qrPayMode", request.getParameter("qrPayMode"));
+        addIfPresent(extra, "qrcodeWidth", request.getParameter("qrcodeWidth"));
+        addIfPresent(extra, "accountName", request.getParameter("accountName"));
+        addIfPresent(extra, "accountPhone", request.getParameter("accountPhone"));
+        addIfPresent(extra, "clientIp", request.getParameter("clientIp"));
+        addIfPresent(extra, "riskControlNotifyUrl", request.getParameter("riskControlNotifyUrl"));
+        addIfPresent(extra, "body", request.getParameter("body"));
+        addIfPresent(extra, "merchantSubject", request.getParameter("merchantSubject"));
+        try {
+            return java.net.URLEncoder.encode(JSONObject.toJSONString(extra), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return "{}";
+        }
+    }
+
+    private void addIfPresent(Map<String, String> map, String key, String value) {
+        if (StringUtils.isNotBlank(value)) {
+            map.put(key, value);
+        }
+    }
 }
