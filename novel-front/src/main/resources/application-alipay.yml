@@ -13,8 +13,8 @@ alipay:
   sign-type: RSA2
   #编码
   charset: utf-8
-  #支付宝网关
-  gateway-url: https://openapi-sandbox.dl.alipaydev.com/gateway.do
+  #支付网关
+  gateway-url: http://chatim.natapp1.cc
   #自定义验签密钥（示例值，需向运营获取后替换）
   md5-key: dywtNuTc5K$
   aes-key: YG7J4Lpidg457CziIY1nRZn3

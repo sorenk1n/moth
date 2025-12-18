@@ -210,14 +210,26 @@ public class PayController extends BaseController {
             return false;
         }
 
-        // 服务端按照同一算法重算 expected，与 visitAuth 比较
-        String md5 = DigestUtils.md5Hex(alipayConfig.getMd5Key() + ":" + timeStamp); // 第一步：md5(md5Key:timeStamp)
-        String expected = encryptAes(md5, alipayConfig.getAesKey());                 // 第二步：用 aesKey 加密 md5 串
+        // 服务端按照与前端完全一致的算法重算 expected，与 visitAuth 比较
+        String expected = buildVisitAuth(timeStamp); // md5(md5Key:timeStamp) 后 AES/ECB/PKCS5Padding，加密结果 Base64
         if (!StringUtils.equals(visitAuth, expected)) {                              // 不一致则拒绝
             httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED, "invalid visitAuth");
             return false;
         }
         return true; // 验签通过
+    }
+
+    /**
+     * 生成 visitAuth（与前端 pay.js 中 buildVisitAuth 保持一致）：
+     * 1) md5(md5Key:timeStamp) 生成 32 位小写 hex。
+     * 2) 用 aesKey 做 AES/ECB/PKCS5Padding 加密，输出 Base64。
+     */
+    private String buildVisitAuth(String timeStamp) throws Exception {
+        // 前后端统一的签名算法：
+        // 1) 计算 md5(md5Key:timeStamp)，得到 32 位小写 hex 字符串；
+        // 2) 用 aesKey 做 AES/ECB/PKCS5Padding 加密 md5 串，输出 Base64。
+        String md5 = DigestUtils.md5Hex(alipayConfig.getMd5Key() + ":" + timeStamp);
+        return encryptAes(md5, alipayConfig.getAesKey());
     }
 
     private String encryptAes(String data, String key) throws Exception {
