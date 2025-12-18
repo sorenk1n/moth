@@ -23,6 +23,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import java.net.URLEncoder;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.PrintWriter;
@@ -69,6 +70,9 @@ public class PayController extends BaseController {
         String passbackParams = buildPassbackParams(request);
         String returnUrl = StringUtils.isNotBlank(request.getParameter("returnUrl")) ? request.getParameter("returnUrl")
             : alipayConfig.getReturnUrl();
+        // 透传前端的验签数据，后续提交到网关时一并带上
+        String timeStampHeader = request.getHeader("timeStamp");
+        String visitAuthHeader = request.getHeader("visitAuth");
 
         UserDetails userDetails = getUserDetails(request);
         if (userDetails == null) {
@@ -105,7 +109,7 @@ public class PayController extends BaseController {
 
                 alipayRequest.setBizContent(bizContent.toString());
                 AlipayTradeWapPayResponse payResponse = alipayClient.pageExecute(alipayRequest);
-                form = payResponse.getBody();
+                form = injectVisitAuth(payResponse.getBody(), timeStampHeader, visitAuthHeader);
             } else {
                 // 电脑站
                 //创建API对应的request
@@ -124,7 +128,7 @@ public class PayController extends BaseController {
                     "  }");
                 //调用SDK生成表单
                 AlipayTradePagePayResponse payResponse = alipayClient.pageExecute(alipayRequest);
-                form = payResponse.getBody();
+                form = injectVisitAuth(payResponse.getBody(), timeStampHeader, visitAuthHeader);
 
             }
 
@@ -277,6 +281,56 @@ public class PayController extends BaseController {
     private void addIfPresent(Map<String, String> map, String key, String value) {
         if (StringUtils.isNotBlank(value)) {
             map.put(key, value);
+        }
+    }
+
+    /**
+     * 将 timeStamp 和 visitAuth 作为隐藏字段注入到表单，确保提交到网关时同样携带。
+     */
+    private String injectVisitAuth(String formHtml, String timeStamp, String visitAuth) {
+        if (StringUtils.isAnyBlank(formHtml, timeStamp, visitAuth)) {
+            return formHtml;
+        }
+        String result = formHtml;
+
+        // 0) 强制使用 application/x-www-form-urlencoded 的 POST 提交（表单默认就是该 Content-Type）
+        // 将 method="get" 调整为 method="post"，如果未声明 method 则追加
+        if (result.contains("method=\"get\"")) {
+            result = result.replaceFirst("method=\"get\"", "method=\"post\"");
+        } else if (!result.contains("method=\"post\"")) {
+            result = result.replaceFirst("<form", "<form method=\"post\"");
+        }
+        // 移除可能的 multipart 声明，避免非表单格式
+        if (result.contains("enctype=\"multipart/form-data\"")) {
+            result = result.replace("enctype=\"multipart/form-data\"", "");
+        }
+        // 将 action 里的查询串剥离，避免再次作为 GET 参数拼接（只保留基础网关地址）
+        int actionIdx = result.indexOf("action=\"");
+        if (actionIdx >= 0) {
+            int start = actionIdx + "action=\"".length();
+            int end = result.indexOf("\"", start);
+            if (end > start) {
+                String actionUrl = result.substring(start, end);
+                String base = actionUrl.contains("?") ? actionUrl.substring(0, actionUrl.indexOf("?")) : actionUrl;
+                result = result.substring(0, start) + base + result.substring(end);
+            }
+        }
+
+        // 1) 给表单追加隐藏字段（适用于 POST/GET 表单）
+        String hidden = "<input type=\"hidden\" name=\"timeStamp\" value=\"" + timeStamp + "\"/>"
+            + "<input type=\"hidden\" name=\"visitAuth\" value=\"" + visitAuth + "\"/>";
+        if (result.contains("</form>")) {
+            result = result.replaceFirst("</form>", hidden + "</form>");
+        }
+
+        return result;
+    }
+
+    private String urlEncode(String value) {
+        try {
+            return URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
+        } catch (Exception e) {
+            return value;
         }
     }
 }
