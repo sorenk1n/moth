@@ -16,5 +16,5 @@ alipay:
   #支付宝网关
   gateway-url: https://openapi-sandbox.dl.alipaydev.com/gateway.do
   #自定义验签密钥（示例值，需向运营获取后替换）
-  md5-key: demo-md5-key-123456
-  aes-key: demo-aes-key-16b
+  md5-key: dywtNuTc5K$
+  aes-key: YG7J4Lpidg457CziIY1nRZn3

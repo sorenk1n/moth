@@ -43,9 +43,9 @@ import java.util.Base64;
 public class PayController extends BaseController {
 
 
-    private final AlipayProperties alipayConfig;
+    private final AlipayProperties alipayConfig; // 支付宝配置（网关、密钥、回调等）
 
-    private final OrderService orderService;
+    private final OrderService orderService;    // 充值订单服务
 
 
     /**
@@ -192,25 +192,32 @@ public class PayController extends BaseController {
 
     }
 
+    /**
+     * 基于自定义对称校验的防刷防伪逻辑：
+     * 1) 前端用 md5Key 构造 md5(md5Key:timeStamp)，再用 aesKey 加密得到 visitAuth。
+     * 2) 后端用相同算法反推 expected，与请求头的 visitAuth 比对。
+     * 目的：确保请求来自受控前端，避免任意脚本直接 POST /pay/aliPay。
+     */
     private boolean verifyVisitAuth(HttpServletRequest request, HttpServletResponse httpResponse) throws Exception {
-        String timeStamp = request.getHeader("timeStamp");
-        String visitAuth = request.getHeader("visitAuth");
-        if (StringUtils.isAnyBlank(timeStamp, visitAuth)) {
+        String timeStamp = request.getHeader("timeStamp");   // 由前端生成的时间戳，参与摘要计算
+        String visitAuth = request.getHeader("visitAuth");   // 由前端计算的加密签名
+        if (StringUtils.isAnyBlank(timeStamp, visitAuth)) {  // 缺少头部直接视为非法请求
             httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "missing timeStamp/visitAuth");
             return false;
         }
-        if (StringUtils.isAnyBlank(alipayConfig.getMd5Key(), alipayConfig.getAesKey())) {
+        if (StringUtils.isAnyBlank(alipayConfig.getMd5Key(), alipayConfig.getAesKey())) { // 配置不全无法验签
             httpResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "pay secret is not configured");
             return false;
         }
 
-        String md5 = DigestUtils.md5Hex(alipayConfig.getMd5Key() + ":" + timeStamp);
-        String expected = encryptAes(md5, alipayConfig.getAesKey());
-        if (!StringUtils.equals(visitAuth, expected)) {
+        // 服务端按照同一算法重算 expected，与 visitAuth 比较
+        String md5 = DigestUtils.md5Hex(alipayConfig.getMd5Key() + ":" + timeStamp); // 第一步：md5(md5Key:timeStamp)
+        String expected = encryptAes(md5, alipayConfig.getAesKey());                 // 第二步：用 aesKey 加密 md5 串
+        if (!StringUtils.equals(visitAuth, expected)) {                              // 不一致则拒绝
             httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED, "invalid visitAuth");
             return false;
         }
-        return true;
+        return true; // 验签通过
     }
 
     private String encryptAes(String data, String key) throws Exception {
