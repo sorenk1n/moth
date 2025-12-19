@@ -104,10 +104,10 @@ public class PayController extends BaseController {
         String externalGoodsType = Optional.ofNullable(request.getParameter("externalGoodsType"))
             .filter(StringUtils::isNotBlank)
             .orElse("9");
-        // 客户端 IP
+        // 客户端 IP，优先取入参，否则取请求头/remoteAddr
         String clientIp = Optional.ofNullable(request.getParameter("clientIp"))
             .filter(StringUtils::isNotBlank)
-            .orElse("39.144.124.51");
+            .orElseGet(() -> resolveClientIp(request));
         // 通知/回跳/退出地址（可根据实际调整，默认使用演示地址）
         String merchantPayNotifyUrl = Optional.ofNullable(request.getParameter("merchantPayNotifyUrl"))
             .filter(StringUtils::isNotBlank)
@@ -391,6 +391,24 @@ public class PayController extends BaseController {
         } catch (Exception e) {
             return value;
         }
+    }
+
+    /**
+     * 获取客户端 IP，优先从代理头获取，回退到 remoteAddr
+     */
+    private String resolveClientIp(HttpServletRequest request) {
+        String[] headerCandidates = {
+            "X-Forwarded-For", "Proxy-Client-IP", "WL-Proxy-Client-IP",
+            "HTTP_CLIENT_IP", "HTTP_X_FORWARDED_FOR"
+        };
+        for (String header : headerCandidates) {
+            String ip = request.getHeader(header);
+            if (StringUtils.isNotBlank(ip) && !"unknown".equalsIgnoreCase(ip)) {
+                // 可能存在逗号分隔的多级代理，取第一个
+                return ip.split(",")[0].trim();
+            }
+        }
+        return request.getRemoteAddr();
     }
 
     /**

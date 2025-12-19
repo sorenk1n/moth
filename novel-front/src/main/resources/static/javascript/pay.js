@@ -122,11 +122,7 @@ var UserPay = {
                 typeIndex: "2",
                 totalAmount: amount.toString(),
                 merchantSubject: "本地测试订单", // 网关必填，后端也会兜底补充
-                externalGoodsType: "9",
-                merchantPayNotifyUrl: "http://chatim.natapp1.cc/pay/notify",
-                quitUrl: "http://sxds.natapp1.cc/quit",
-                clientIp: "39.144.124.51",
-                riskControlNotifyUrl: "http://chatim.natapp1.cc/pay/riskNotify"
+                externalGoodsType: "9"
             };
 
             $.ajax({
