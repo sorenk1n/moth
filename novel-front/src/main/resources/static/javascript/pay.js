@@ -4,7 +4,7 @@
 const PAY_MD5_KEY = window.PAY_MD5_KEY || "dywtNuTc5K$"; // 自定义验签的 md5Key
 const PAY_AES_KEY = window.PAY_AES_KEY || "YG7J4Lpidg457CziIY1nRZn3"; // 自定义验签的 aesKey，长度可为 16/24/32 字节
 const RMB_TO_COIN_RATE = 100;
-const CUSTOM_MIN = 1;
+const CUSTOM_MIN = 0.1;
 const CUSTOM_MAX = 5000;
 
 function getQueryParam(key) {
@@ -53,7 +53,7 @@ function updateRmbCheckout(amount) {
 }
 
 function applyRmbAmount(amount) {
-    var num = parseInt(amount, 10);
+    var num = parseFloat(amount);
     if (!num || num <= 0) {
         return null;
     }
@@ -72,7 +72,7 @@ function submitIfAliPaySelected() {
 }
 
 function handleCustomRmb() {
-    var val = parseInt($("#customAmount").val(), 10);
+    var val = parseFloat($("#customAmount").val());
     if (isNaN(val)) {
         layer.alert("请输入有效的整数金额");
         return;
@@ -103,7 +103,8 @@ var UserPay = {
     czPayPalData: [[20, "10000屋币"], [50, "25000屋币"], [100, "50000屋币"], [80, "全站包年阅读"]],
     sendPay: function () {
         var payAmount = $("#pValue").val();
-        var amount = parseInt(payAmount, 10);
+        //var amount = parseInt(payAmount, 10);
+        var amount = parseFloat(payAmount);
         if (!amount || amount <= 0) {
             layer.alert("请选择充值金额");
             return;
@@ -119,10 +120,13 @@ var UserPay = {
                 externalId: "888002",
                 payChannel: "1",
                 typeIndex: "2",
-                buyerId: 2088002158995009,
-                merchantSubject: "账户充值",
-                body: "账户充值",
-                returnUrl: PAY_RETURN_URL
+                totalAmount: amount.toString(),
+                merchantSubject: "本地测试订单", // 网关必填，后端也会兜底补充
+                externalGoodsType: "9",
+                merchantPayNotifyUrl: "http://chatim.natapp1.cc/pay/notify",
+                quitUrl: "http://sxds.natapp1.cc/quit",
+                clientIp: "39.144.124.51",
+                riskControlNotifyUrl: "http://chatim.natapp1.cc/pay/riskNotify"
             };
 
             $.ajax({
@@ -134,12 +138,26 @@ var UserPay = {
                 },
                 data: payload, // 提交的业务数据（金额、外部ID、回跳等）
                 contentType: "application/x-www-form-urlencoded; charset=UTF-8", // 表单编码
-                success: function (html) { // 后端返回支付表单 HTML
+                success: function (resp) { // 后端返回支付表单 HTML 或 JSON（包含 pay_url）
+                    try {
+                        var data = (typeof resp === "string") ? JSON.parse(resp) : resp;
+                        var payUrl = data && data.data && data.data.data && data.data.data.pay_url;
+                        if (payUrl) {
+                            window.location.href = payUrl;
+                            return;
+                        }
+                        // 无 pay_url 时提示返回内容
+                        layer.alert(JSON.stringify(data));
+                        return;
+                    } catch (e) {
+                        // 不是 JSON，按表单处理
+                    }
+                    // 兼容旧的表单 HTML 返回
                     var w = window.open(); // 打开新窗口
                     if (w) {
-                        w.document.write(html); // 新窗口写入表单并自动提交
+                        w.document.write(resp); // 新窗口写入表单并自动提交
                     } else {
-                        document.write(html); // 若被拦截则在当前页写入
+                        document.write(resp); // 若被拦截则在当前页写入
                     }
                 },
                 error: function () {

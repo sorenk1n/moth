@@ -6,9 +6,9 @@ alipay:
   #支付宝公钥字符串
   public-key: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAhhxvlKQgF2rCaCw2WHIOTQU2GDTiT+VSwOwxuoMMTk1ajNblrgHDJtkcDB7h0/Po1cIQ7afsKM1p3cYxwoNBVtqZMK4SbV5HBWz9w1rBKmHdgLh8xAqPGOa3zfqo+lzutspoDofHxwFMU0fhKliFB+gHADBZOY6VHXqxH0f/E4BsE5hGQuWD+r0k03wgi1baE4ZrcwMLWYNZkAxATzTNLYeE67MIWYTtHd2zqhDx6Ddjjo7rUj6ClHmN7zK4B0A5vf/LDZw1Zn6mAmiuX+OTwL2XD1K57pIaWhYjkUHetPrysfgaaZwhd/XtuDOb3q6SJGCX3OhqTIC5pry3009nJQIDAQAB
   #填写您的支付类接口异步通知接收服务地址，例如：https://www:test:com/callback:
-  notify-url: http://aaa37f96.natappfree.cc/pay/aliPay/notify
+  notify-url: http://soren.natapp1.cc/pay/aliPay/notify
   #支付成功跳转页面
-  return-url: http://aaa37f96.natappfree.cc/user/userinfo.html
+  return-url: http://soren.natapp1.cc/user/userinfo.html
   #签名方式
   sign-type: RSA2
   #编码

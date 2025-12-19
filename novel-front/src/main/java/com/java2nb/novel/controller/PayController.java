@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.net.URLEncoder;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -60,12 +62,12 @@ public class PayController extends BaseController {
      */
     @SneakyThrows
     @PostMapping("aliPay")
-    public void aliPay(Integer payAmount, HttpServletRequest request, HttpServletResponse httpResponse) {
+    public void aliPay(BigDecimal payAmount, HttpServletRequest request, HttpServletResponse httpResponse) {
 
         if (!verifyVisitAuth(request, httpResponse)) {
             return;
         }
-        if (payAmount == null || payAmount <= 0) {
+        if (payAmount == null || payAmount.compareTo(BigDecimal.ZERO) <= 0) {
             httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "payAmount is required");
             return;
         }
@@ -74,8 +76,7 @@ public class PayController extends BaseController {
         String merchantSubject = Optional.ofNullable(request.getParameter("merchantSubject")).orElse("fireflynovel");
         String body = Optional.ofNullable(request.getParameter("body")).orElse("fireflynovel");
         String passbackParams = buildPassbackParams(request);
-        String returnUrl = StringUtils.isNotBlank(request.getParameter("returnUrl")) ? request.getParameter("returnUrl")
-            : alipayConfig.getReturnUrl();
+        String returnUrl = alipayConfig.getReturnUrl();
         // 透传前端的验签数据，后续提交到网关时一并带上
         String timeStampHeader = request.getHeader("timeStamp");
         String visitAuthHeader = request.getHeader("visitAuth");
@@ -87,10 +88,42 @@ public class PayController extends BaseController {
         String payChannel = Optional.ofNullable(request.getParameter("payChannel"))
             .filter(StringUtils::isNotBlank)
             .orElse("1");
-        // 业务类型索引，网关必填，默认 1
+        // 业务类型索引，网关必填，默认 2
         String typeIndex = Optional.ofNullable(request.getParameter("typeIndex"))
             .filter(StringUtils::isNotBlank)
             .orElse("2");
+        // 商户单号（由系统生成，确保唯一）
+        String merchantTradeNo = Optional.ofNullable(request.getParameter("merchantTradeNo"))
+            .filter(StringUtils::isNotBlank)
+            .orElse(null);
+        // 订单标题
+        merchantSubject = Optional.ofNullable(request.getParameter("merchantSubject"))
+            .filter(StringUtils::isNotBlank)
+            .orElse("本地测试订单");
+        // 商品类型
+        String externalGoodsType = Optional.ofNullable(request.getParameter("externalGoodsType"))
+            .filter(StringUtils::isNotBlank)
+            .orElse("9");
+        // 客户端 IP
+        String clientIp = Optional.ofNullable(request.getParameter("clientIp"))
+            .filter(StringUtils::isNotBlank)
+            .orElse("39.144.124.51");
+        // 通知/回跳/退出地址（可根据实际调整，默认使用演示地址）
+        String merchantPayNotifyUrl = Optional.ofNullable(request.getParameter("merchantPayNotifyUrl"))
+            .filter(StringUtils::isNotBlank)
+            .orElse("http://chatim.natapp1.cc/pay/notify"); // 业务支付结果异步通知
+        String riskControlNotifyUrl = Optional.ofNullable(request.getParameter("riskControlNotifyUrl"))
+            .filter(StringUtils::isNotBlank)
+            .orElse("http://chatim.natapp1.cc/pay/riskNotify"); // 风控通知回调
+        String quitUrl = Optional.ofNullable(request.getParameter("quitUrl"))
+            .filter(StringUtils::isNotBlank)
+            .orElse("http://sxds.natapp1.cc/quit"); // 用户取消/退出时回跳地址
+        // 使用配置文件中的 return-url
+        returnUrl = alipayConfig.getReturnUrl();
+        // 自定义总金额（如网关需要 totalAmount 字段），默认等于 payAmount
+        String totalAmount = Optional.ofNullable(request.getParameter("totalAmount"))
+            .filter(StringUtils::isNotBlank)
+            .orElse(null);
 
         UserDetails userDetails = getUserDetails(request);
         if (userDetails == null) {
@@ -98,7 +131,11 @@ public class PayController extends BaseController {
             httpResponse.sendRedirect("/user/login.html?originUrl=/pay/index.html");
         } else {
             //创建充值订单
-            Long outTradeNo = orderService.createPayOrder((byte) 1, payAmount, userDetails.getId());
+            BigDecimal amountYuan = payAmount.setScale(2, RoundingMode.HALF_UP);
+            int amountCent = amountYuan.movePointRight(2).intValueExact();
+            Long outTradeNo = orderService.createPayOrder((byte) 1, amountCent, userDetails.getId());
+            // 统一使用订单号作为商户单号，保证唯一性、可对账
+            merchantTradeNo = String.valueOf(outTradeNo);
             //获得初始化的AlipayClient
             AlipayClient alipayClient = new DefaultAlipayClient(alipayConfig.getGatewayUrl(),
                 alipayConfig.getAppId(), alipayConfig.getMerchantPrivateKey(), "json", alipayConfig.getCharset(),
@@ -151,7 +188,10 @@ public class PayController extends BaseController {
             }
 
             // 直接由服务端以 POST 方式转发到网关，携带 timeStamp/visitAuth 头部，返回结果给前端
-            proxyPostToGateway(form, timeStampHeader, visitAuthHeader, externalId, payChannel, typeIndex, httpResponse);
+            proxyPostToGateway(form, timeStampHeader, visitAuthHeader, externalId, payChannel, typeIndex,
+                merchantTradeNo, externalGoodsType, merchantPayNotifyUrl, riskControlNotifyUrl, quitUrl, returnUrl,
+                clientIp, Optional.ofNullable(totalAmount).orElse(amountYuan.toPlainString()), merchantSubject,
+                httpResponse);
         }
 
 
@@ -357,7 +397,9 @@ public class PayController extends BaseController {
      * 将 SDK 生成的表单解析为 key/value，并由服务端 POST 到网关，附带 timeStamp/visitAuth 头
      */
     private void proxyPostToGateway(String formHtml, String timeStamp, String visitAuth, String externalId,
-        String payChannel, String typeIndex, HttpServletResponse httpResponse) throws Exception {
+        String payChannel, String typeIndex, String merchantTradeNo, String externalGoodsType,
+        String merchantPayNotifyUrl, String riskControlNotifyUrl, String quitUrl, String returnUrl, String clientIp,
+        String totalAmount, String merchantSubject, HttpServletResponse httpResponse) throws Exception {
         // 解析 action
         String action = extractFormAction(formHtml);
         Map<String, String> params = extractFormInputs(formHtml);
@@ -383,6 +425,33 @@ public class PayController extends BaseController {
         if (StringUtils.isNotBlank(typeIndex)) {
             params.putIfAbsent("typeIndex", typeIndex);
         }
+        if (StringUtils.isNotBlank(merchantTradeNo)) {
+            params.put("merchantTradeNo", merchantTradeNo);
+        }
+        if (StringUtils.isNotBlank(externalGoodsType)) {
+            params.putIfAbsent("externalGoodsType", externalGoodsType);
+        }
+        if (StringUtils.isNotBlank(merchantPayNotifyUrl)) {
+            params.put("merchantPayNotifyUrl", merchantPayNotifyUrl);
+        }
+        if (StringUtils.isNotBlank(riskControlNotifyUrl)) {
+            params.put("riskControlNotifyUrl", riskControlNotifyUrl);
+        }
+        if (StringUtils.isNotBlank(quitUrl)) {
+            params.put("quitUrl", quitUrl);
+        }
+        if (StringUtils.isNotBlank(returnUrl)) {
+            params.put("returnUrl", returnUrl);
+        }
+        if (StringUtils.isNotBlank(clientIp)) {
+            params.put("clientIp", clientIp);
+        }
+        if (StringUtils.isNotBlank(totalAmount)) {
+            params.put("totalAmount", totalAmount);
+        }
+        if (StringUtils.isNotBlank(merchantSubject)) {
+            params.put("merchantSubject", merchantSubject);
+        }
         for (Map.Entry<String, String> entry : params.entrySet()) {
             if (bodyBuilder.length() > 0) {
                 bodyBuilder.append("&");
@@ -405,7 +474,13 @@ public class PayController extends BaseController {
 
         HttpResponse<String> gatewayResp = client.send(req, HttpResponse.BodyHandlers.ofString());
         httpResponse.setStatus(gatewayResp.statusCode());
-        httpResponse.setContentType("text/html;charset=utf-8");
+        // 根据网关返回内容类型透传，便于前端正确解析 JSON
+        String respContentType = gatewayResp.headers().firstValue("Content-Type").orElse("");
+        if (respContentType.toLowerCase().contains("application/json")) {
+            httpResponse.setContentType("application/json;charset=utf-8");
+        } else {
+            httpResponse.setContentType("text/html;charset=utf-8");
+        }
         httpResponse.getWriter().write(gatewayResp.body());
         httpResponse.getWriter().flush();
         httpResponse.getWriter().close();
