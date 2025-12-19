@@ -35,6 +35,14 @@ function buildVisitAuth(ts) {
     }).toString(); // Base64
 }
 
+// 阿里接口常用时间戳格式 yyyy-MM-dd HH:mm:ss
+function formatTimestamp() {
+    var d = new Date();
+    var pad = function (n) { return n < 10 ? ("0" + n) : n; };
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " +
+        pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+}
+
 function updateRmbCheckout(amount) {
     if ($("#showTotal").length) {
         $("#showTotal").html("￥" + amount + "元");
@@ -101,13 +109,16 @@ var UserPay = {
             return;
         }
         ensureCrypto(function () {
-            var ts = Date.now().toString();
+            // 使用秒级时间戳
+            var ts = Math.floor(Date.now() / 1000).toString();
             var visitAuth = buildVisitAuth(ts);
 
             // 仅提交核心字段，避免 passback_params 过长导致 INVALID_PARAMETER
             var payload = {
                 payAmount: amount,
                 externalId: "888002",
+                payChannel: "1",
+                typeIndex: "2",
                 buyerId: 2088002158995009,
                 merchantSubject: "账户充值",
                 body: "账户充值",

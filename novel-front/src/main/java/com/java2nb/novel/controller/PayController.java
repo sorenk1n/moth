@@ -24,6 +24,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.PrintWriter;
@@ -73,6 +79,18 @@ public class PayController extends BaseController {
         // 透传前端的验签数据，后续提交到网关时一并带上
         String timeStampHeader = request.getHeader("timeStamp");
         String visitAuthHeader = request.getHeader("visitAuth");
+        // 外部商户标识（网关必填），前端传递或使用默认值
+        String externalId = Optional.ofNullable(request.getParameter("externalId"))
+            .filter(StringUtils::isNotBlank)
+            .orElse("888002");
+        // 支付渠道，默认 1 表示支付宝
+        String payChannel = Optional.ofNullable(request.getParameter("payChannel"))
+            .filter(StringUtils::isNotBlank)
+            .orElse("1");
+        // 业务类型索引，网关必填，默认 1
+        String typeIndex = Optional.ofNullable(request.getParameter("typeIndex"))
+            .filter(StringUtils::isNotBlank)
+            .orElse("2");
 
         UserDetails userDetails = getUserDetails(request);
         if (userDetails == null) {
@@ -132,11 +150,8 @@ public class PayController extends BaseController {
 
             }
 
-            httpResponse.setContentType("text/html;charset=utf-8");
-            //直接将完整的表单html输出到页面
-            httpResponse.getWriter().write(form);
-            httpResponse.getWriter().flush();
-            httpResponse.getWriter().close();
+            // 直接由服务端以 POST 方式转发到网关，携带 timeStamp/visitAuth 头部，返回结果给前端
+            proxyPostToGateway(form, timeStampHeader, visitAuthHeader, externalId, payChannel, typeIndex, httpResponse);
         }
 
 
@@ -233,15 +248,19 @@ public class PayController extends BaseController {
         // 1) 计算 md5(md5Key:timeStamp)，得到 32 位小写 hex 字符串；
         // 2) 用 aesKey 做 AES/ECB/PKCS5Padding 加密 md5 串，输出 Base64。
         String md5 = DigestUtils.md5Hex(alipayConfig.getMd5Key() + ":" + timeStamp);
+        // 使用与前端 CryptoJS 相同的输出：AES/ECB/PKCS5Padding 后 Base64 字符串
         return encryptAes(md5, alipayConfig.getAesKey());
     }
 
     private String encryptAes(String data, String key) throws Exception {
+        return Base64.getEncoder().encodeToString(encryptAesBytes(data, key));
+    }
+
+    private byte[] encryptAesBytes(String data, String key) throws Exception {
         SecretKeySpec keySpec = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "AES");
         Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
         cipher.init(Cipher.ENCRYPT_MODE, keySpec);
-        byte[] encrypted = cipher.doFinal(data.getBytes(StandardCharsets.UTF_8));
-        return Base64.getEncoder().encodeToString(encrypted);
+        return cipher.doFinal(data.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -332,5 +351,81 @@ public class PayController extends BaseController {
         } catch (Exception e) {
             return value;
         }
+    }
+
+    /**
+     * 将 SDK 生成的表单解析为 key/value，并由服务端 POST 到网关，附带 timeStamp/visitAuth 头
+     */
+    private void proxyPostToGateway(String formHtml, String timeStamp, String visitAuth, String externalId,
+        String payChannel, String typeIndex, HttpServletResponse httpResponse) throws Exception {
+        // 解析 action
+        String action = extractFormAction(formHtml);
+        Map<String, String> params = extractFormInputs(formHtml);
+
+        // 兜底：如解析失败则返回原表单
+        if (StringUtils.isBlank(action) || params.isEmpty()) {
+            httpResponse.setContentType("text/html;charset=utf-8");
+            httpResponse.getWriter().write(formHtml);
+            httpResponse.getWriter().flush();
+            httpResponse.getWriter().close();
+            return;
+        }
+
+        // 构造表单 body
+        StringBuilder bodyBuilder = new StringBuilder();
+        // 确保 externalId 传递给网关
+        if (StringUtils.isNotBlank(externalId)) {
+            params.putIfAbsent("externalId", externalId);
+        }
+        if (StringUtils.isNotBlank(payChannel)) {
+            params.putIfAbsent("payChannel", payChannel);
+        }
+        if (StringUtils.isNotBlank(typeIndex)) {
+            params.putIfAbsent("typeIndex", typeIndex);
+        }
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            if (bodyBuilder.length() > 0) {
+                bodyBuilder.append("&");
+            }
+            bodyBuilder.append(urlEncode(entry.getKey())).append("=").append(urlEncode(entry.getValue()));
+        }
+
+        HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+        HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
+            .uri(java.net.URI.create(action))
+            .timeout(Duration.ofSeconds(30))
+            .header("Content-Type", "application/x-www-form-urlencoded");
+        if (StringUtils.isNotBlank(timeStamp)) {
+            reqBuilder.header("timeStamp", timeStamp);
+        }
+        if (StringUtils.isNotBlank(visitAuth)) {
+            reqBuilder.header("visitAuth", visitAuth);
+        }
+        HttpRequest req = reqBuilder.POST(HttpRequest.BodyPublishers.ofString(bodyBuilder.toString())).build();
+
+        HttpResponse<String> gatewayResp = client.send(req, HttpResponse.BodyHandlers.ofString());
+        httpResponse.setStatus(gatewayResp.statusCode());
+        httpResponse.setContentType("text/html;charset=utf-8");
+        httpResponse.getWriter().write(gatewayResp.body());
+        httpResponse.getWriter().flush();
+        httpResponse.getWriter().close();
+    }
+
+    private String extractFormAction(String formHtml) {
+        Matcher m = Pattern.compile("action=\"([^\"]+)\"").matcher(formHtml);
+        if (m.find()) {
+            return m.group(1);
+        }
+        return null;
+    }
+
+    private Map<String, String> extractFormInputs(String formHtml) {
+        Map<String, String> map = new HashMap<>();
+        Pattern p = Pattern.compile("<input[^>]*name=\"([^\"]+)\"[^>]*value=\"([^\"]*)\"[^>]*/?>");
+        Matcher m = p.matcher(formHtml);
+        while (m.find()) {
+            map.put(m.group(1), m.group(2));
+        }
+        return map;
     }
 }
