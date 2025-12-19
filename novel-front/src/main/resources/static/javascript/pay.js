@@ -6,6 +6,9 @@ const PAY_AES_KEY = window.PAY_AES_KEY || "YG7J4Lpidg457CziIY1nRZn3"; // 自定�
 const RMB_TO_COIN_RATE = 100;
 const CUSTOM_MIN = 0.1;
 const CUSTOM_MAX = 5000;
+const DEFAULT_MERCHANT_NO = "888007";
+let merchantLoaded = false;
+let merchantsCache = [];
 
 function getQueryParam(key) {
     var reg = new RegExp("(^|&)" + key + "=([^&]*)(&|$)", "i");
@@ -25,6 +28,45 @@ function ensureCrypto(callback) {
         .fail(function () {
             layer.alert("加密库加载失败，请检查本地静态资源 /javascript/crypto-js.min.js 是否存在");
         });
+}
+
+function renderMerchants(list) {
+    var $select = $("#merchantSelect");
+    if (!$select.length) {
+        return;
+    }
+    $select.empty();
+    list.forEach(function (m, idx) {
+        var opt = $("<option>").val(m.merchantNo).text(m.name + "（" + m.merchantNo + "）");
+        $select.append(opt);
+    });
+    if (!$select.val() && list.length > 0) {
+        $select.val(list[0].merchantNo);
+    }
+}
+
+function loadMerchants() {
+    var $select = $("#merchantSelect");
+    if (!$select.length) {
+        return;
+    }
+    $.ajax({
+        type: "get",
+        url: "/pay/merchants",
+        dataType: "json",
+        success: function (resp) {
+            if (resp && resp.code === 200 && resp.data) {
+                merchantsCache = resp.data;
+                if (merchantsCache.length > 0) {
+                    renderMerchants(merchantsCache);
+                    merchantLoaded = true;
+                }
+            }
+        },
+        error: function () {
+            // 使用默认值，不阻塞
+        }
+    });
 }
 
 function buildVisitAuth(ts) {
@@ -109,6 +151,7 @@ var UserPay = {
             layer.alert("请选择充值金额");
             return;
         }
+        var merchantNo = $("#merchantSelect").val() || DEFAULT_MERCHANT_NO;
         ensureCrypto(function () {
             // 使用秒级时间戳
             var ts = Math.floor(Date.now() / 1000).toString();
@@ -117,11 +160,10 @@ var UserPay = {
             // 仅提交核心字段，避免 passback_params 过长导致 INVALID_PARAMETER
             var payload = {
                 payAmount: amount,
-                externalId: "888002",
+                externalId: merchantNo,
                 payChannel: "1",
                 typeIndex: "2",
-                totalAmount: amount.toString(),
-                merchantSubject: "本地测试订单", // 网关必填，后端也会兜底补充
+                totalAmount: amount.toString(), // 网关必填，后端也会兜底补充
                 externalGoodsType: "9"
             };
 
@@ -170,6 +212,9 @@ $(function () {
         e.preventDefault();
         UserPay.sendPay();
     });
+
+    // 加载商户下拉
+    loadMerchants();
 
     // 默认选中第一个金额，回显汇总
     var defaultLi = $("#ulZFWX li").first();

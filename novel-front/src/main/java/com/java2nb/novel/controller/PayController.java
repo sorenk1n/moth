@@ -73,7 +73,8 @@ public class PayController extends BaseController {
         }
 
         // 下单自定义字段（供透传或日志使用，未参与支付宝金额计算）
-        String merchantSubject = Optional.ofNullable(request.getParameter("merchantSubject")).orElse("fireflynovel");
+        String merchantSubjectParam = request.getParameter("merchantSubject");
+        String merchantSubject = null;
         String body = Optional.ofNullable(request.getParameter("body")).orElse("fireflynovel");
         String passbackParams = buildPassbackParams(request);
         String returnUrl = alipayConfig.getReturnUrl();
@@ -83,7 +84,7 @@ public class PayController extends BaseController {
         // 外部商户标识（网关必填），前端传递或使用默认值
         String externalId = Optional.ofNullable(request.getParameter("externalId"))
             .filter(StringUtils::isNotBlank)
-            .orElse("888002");
+            .orElse("888007");
         // 支付渠道，默认 1 表示支付宝
         String payChannel = Optional.ofNullable(request.getParameter("payChannel"))
             .filter(StringUtils::isNotBlank)
@@ -96,10 +97,6 @@ public class PayController extends BaseController {
         String merchantTradeNo = Optional.ofNullable(request.getParameter("merchantTradeNo"))
             .filter(StringUtils::isNotBlank)
             .orElse(null);
-        // 订单标题
-        merchantSubject = Optional.ofNullable(request.getParameter("merchantSubject"))
-            .filter(StringUtils::isNotBlank)
-            .orElse("本地测试订单");
         // 商品类型
         String externalGoodsType = Optional.ofNullable(request.getParameter("externalGoodsType"))
             .filter(StringUtils::isNotBlank)
@@ -136,6 +133,20 @@ public class PayController extends BaseController {
             Long outTradeNo = orderService.createPayOrder((byte) 1, amountCent, userDetails.getId());
             // 统一使用订单号作为商户单号，保证唯一性、可对账
             merchantTradeNo = String.valueOf(outTradeNo);
+            // 充值描述：尾号aaaa用户充值b屋币
+            String maskedPhone = Optional.ofNullable(userDetails.getUsername())
+                .filter(StringUtils::isNotBlank)
+                .map(str -> {
+                    String digits = str.replaceAll("\\D", "");
+                    if (digits.length() >= 4) {
+                        return digits.substring(digits.length() - 4);
+                    }
+                    return "****";
+                }).orElse("****");
+            String subjectTemplate = "尾号" + maskedPhone + "用户充值" + amountYuan.toPlainString() + "屋币";
+            merchantSubject = Optional.ofNullable(merchantSubjectParam)
+                .filter(StringUtils::isNotBlank)
+                .orElse(subjectTemplate);
             //获得初始化的AlipayClient
             AlipayClient alipayClient = new DefaultAlipayClient(alipayConfig.getGatewayUrl(),
                 alipayConfig.getAppId(), alipayConfig.getMerchantPrivateKey(), "json", alipayConfig.getCharset(),
