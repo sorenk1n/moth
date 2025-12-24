@@ -143,7 +143,8 @@ public class PayController extends BaseController {
                     }
                     return "****";
                 }).orElse("****");
-            String subjectTemplate = "尾号" + maskedPhone + "用户充值" + amountYuan.toPlainString() + "屋币";
+            String coinAmount = amountYuan.multiply(BigDecimal.valueOf(100)).toPlainString();
+            String subjectTemplate = "尾号" + maskedPhone + "用户充值" + coinAmount + "屋币";
             merchantSubject = Optional.ofNullable(merchantSubjectParam)
                 .filter(StringUtils::isNotBlank)
                 .orElse(subjectTemplate);
