@@ -37,12 +37,21 @@ function renderMerchants(list) {
     }
     $select.empty();
     list.forEach(function (m, idx) {
-        var opt = $("<option>").val(m.merchantNo).text(m.name + "（" + m.merchantNo + "）");
+        var opt = $("<option>").val(m.merchantNo).text(buildMerchantLabel(m));
         $select.append(opt);
     });
     if (!$select.val() && list.length > 0) {
         $select.val(list[0].merchantNo);
     }
+}
+
+function buildMerchantLabel(merchant) {
+    var name = (merchant && merchant.remark) ? merchant.remark : "商户";
+    var alipayNo = merchant && merchant.alipayMerchantNo ? merchant.alipayMerchantNo : "";
+    var fallbackNo = merchant && merchant.merchantNo ? merchant.merchantNo : "";
+    var tailSource = alipayNo || fallbackNo;
+    var tail = tailSource ? tailSource.slice(-4) : "";
+    return tail ? (name + "（" + tail + "）") : name;
 }
 
 function loadMerchants() {
@@ -124,8 +133,29 @@ function handleCustomRmb() {
         return;
     }
     $("#ulZFWX li").removeClass("on");
+    $("#ulZFWX").find("li[data-type='custom']").addClass("on");
     applyRmbAmount(val);
-    submitIfAliPaySelected();
+}
+
+function getSelectedAmount() {
+    var $selected = $("#ulZFWX").find("li.on");
+    if (!$selected.length) {
+        return null;
+    }
+    if ($selected.data("type") === "custom") {
+        var custom = parseFloat($("#customAmount").val());
+        if (isNaN(custom)) {
+            layer.alert("请输入有效的整数金额");
+            return null;
+        }
+        if (custom < CUSTOM_MIN || custom > CUSTOM_MAX) {
+            layer.alert("金额范围需在 " + CUSTOM_MIN + " - " + CUSTOM_MAX + " 元之间");
+            return null;
+        }
+        return custom;
+    }
+    var preset = parseFloat($selected.attr("vals"));
+    return (!preset || preset <= 0) ? null : preset;
 }
 
 // 支付完成后的回跳地址：优先 originUrl 参数，其次上一页，否则默认用户中心
@@ -255,12 +285,16 @@ $(function () {
     })
 
     $("#ulZFWX li").click(function () {
+        if ($(this).data("type") === "custom") {
+            $("#customAmount").focus();
+            $("#ulZFWX li").removeClass("on");
+            $(this).addClass("on");
+            return;
+        }
         $("#ulZFWX li").removeClass("on");
         $(this).addClass("on");
         var amount = $(this).attr("vals");
-        if (applyRmbAmount(amount)) {
-            submitIfAliPaySelected();
-        }
+        applyRmbAmount(amount);
     });
     $("#ulPayPal li").click(function () {
         $("#ulPayPal li").removeClass("on");
@@ -278,13 +312,25 @@ $(function () {
     });
 
     $("#btnUseCustom").on("click", function () {
-        handleCustomRmb();
+        var amount = getSelectedAmount();
+        if (!amount) {
+            layer.alert("请选择充值金额");
+            return;
+        }
+        if (applyRmbAmount(amount)) {
+            submitIfAliPaySelected();
+        }
     });
 
     $("#customAmount").on("keydown", function (e) {
         if (e.key === "Enter") {
             e.preventDefault();
-            handleCustomRmb();
+            $("#btnUseCustom").trigger("click");
         }
+    });
+
+    $("#customAmount").on("focus", function () {
+        $("#ulZFWX li").removeClass("on");
+        $("#ulZFWX").find("li[data-type='custom']").addClass("on");
     });
 });
