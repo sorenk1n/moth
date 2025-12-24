@@ -14,6 +14,9 @@ public class PayMerchant {
     /** 商户号，用于 externalId */
     private String merchantNo;
 
+    /** 支付宝商户号 */
+    private String alipayMerchantNo;
+
     /** 商户名称 */
     private String name;
 

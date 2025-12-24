@@ -8,7 +8,7 @@ import org.apache.ibatis.annotations.Select;
 @Mapper
 public interface PayMerchantMapper {
 
-    @Select("select id, merchant_no as merchantNo, name, status, remark, create_time as createTime, update_time as updateTime "
+    @Select("select id, merchant_no as merchantNo, alipay_merchant_no as alipayMerchantNo, name, status, remark, create_time as createTime, update_time as updateTime "
         + "from pay_merchant where status = 1 order by id")
     List<PayMerchant> listActive();
 }
