@@ -17,6 +17,16 @@ function getQueryParam(key) {
     return null;
 }
 
+function isMobileDevice() {
+    var ua = (navigator.userAgent || "").toLowerCase();
+    return ua.indexOf("mobile") !== -1
+        || ua.indexOf("android") !== -1
+        || ua.indexOf("iphone") !== -1
+        || ua.indexOf("ipad") !== -1
+        || ua.indexOf("ipod") !== -1
+        || ua.indexOf("windows phone") !== -1;
+}
+
 // 若页面未内置 CryptoJS，则按需从本地静态资源加载
 function ensureCrypto(callback) {
     if (window.CryptoJS) {
@@ -194,8 +204,13 @@ var UserPay = {
                 payChannel: "1",
                 typeIndex: "2",
                 totalAmount: amount.toString(), // 网关必填，后端也会兜底补充
-                externalGoodsType: "9"
+                externalGoodsType: "9",
+                clientType: isMobileDevice() ? "mobile" : "pc"
             };
+            if (isMobileDevice()) {
+                payload.qrPayMode = "1";
+                payload.qrcodeWidth = "200";
+            }
 
             $.ajax({
                 type: "post", // 使用 POST 提交支付请求

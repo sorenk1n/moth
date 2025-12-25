@@ -152,10 +152,11 @@ public class PayController extends BaseController {
             AlipayClient alipayClient = new DefaultAlipayClient(alipayConfig.getGatewayUrl(),
                 alipayConfig.getAppId(), alipayConfig.getMerchantPrivateKey(), "json", alipayConfig.getCharset(),
                 alipayConfig.getPublicKey(), alipayConfig.getSignType());
-            String form;
-            if (isMobilePay(request)) {
-                // 手机站
-                AlipayTradeWapPayRequest alipayRequest = new AlipayTradeWapPayRequest();
+        String form;
+        boolean mobilePay = isMobilePay(request);
+        if (mobilePay) {
+            // 手机站
+            AlipayTradeWapPayRequest alipayRequest = new AlipayTradeWapPayRequest();
                 alipayRequest.setReturnUrl(returnUrl);
                 //在公共参数中设置回跳和通知地址
                 alipayRequest.setNotifyUrl(alipayConfig.getNotifyUrl());
@@ -200,16 +201,30 @@ public class PayController extends BaseController {
             }
 
             // 直接由服务端以 POST 方式转发到网关，携带 timeStamp/visitAuth 头部，返回结果给前端
+            String qrPayMode = Optional.ofNullable(request.getParameter("qrPayMode"))
+                .filter(StringUtils::isNotBlank)
+                .orElse(mobilePay ? "1" : null);
+            String qrcodeWidth = Optional.ofNullable(request.getParameter("qrcodeWidth"))
+                .filter(StringUtils::isNotBlank)
+                .orElse(mobilePay ? "200" : null);
+
             proxyPostToGateway(form, timeStampHeader, visitAuthHeader, externalId, payChannel, typeIndex,
                 merchantTradeNo, externalGoodsType, merchantPayNotifyUrl, riskControlNotifyUrl, quitUrl, returnUrl,
                 clientIp, Optional.ofNullable(totalAmount).orElse(amountYuan.toPlainString()), merchantSubject,
-                httpResponse);
+                qrPayMode, qrcodeWidth, httpResponse);
         }
 
 
     }
 
     private boolean isMobilePay(HttpServletRequest request) {
+        String clientType = Optional.ofNullable(request.getParameter("clientType")).orElse("");
+        if ("mobile".equalsIgnoreCase(clientType)) {
+            return true;
+        }
+        if ("pc".equalsIgnoreCase(clientType)) {
+            return false;
+        }
         String templateDir = ThreadLocalUtil.getTemplateDir();
         if (StringUtils.isNotBlank(templateDir) && templateDir.contains("mobile")) {
             return true;
@@ -443,7 +458,8 @@ public class PayController extends BaseController {
     private void proxyPostToGateway(String formHtml, String timeStamp, String visitAuth, String externalId,
         String payChannel, String typeIndex, String merchantTradeNo, String externalGoodsType,
         String merchantPayNotifyUrl, String riskControlNotifyUrl, String quitUrl, String returnUrl, String clientIp,
-        String totalAmount, String merchantSubject, HttpServletResponse httpResponse) throws Exception {
+        String totalAmount, String merchantSubject, String qrPayMode, String qrcodeWidth,
+        HttpServletResponse httpResponse) throws Exception {
         // 解析 action
         String action = extractFormAction(formHtml);
         Map<String, String> params = extractFormInputs(formHtml);
@@ -495,6 +511,12 @@ public class PayController extends BaseController {
         }
         if (StringUtils.isNotBlank(merchantSubject)) {
             params.put("merchantSubject", merchantSubject);
+        }
+        if (StringUtils.isNotBlank(qrPayMode)) {
+            params.putIfAbsent("qrPayMode", qrPayMode);
+        }
+        if (StringUtils.isNotBlank(qrcodeWidth)) {
+            params.putIfAbsent("qrcodeWidth", qrcodeWidth);
         }
         for (Map.Entry<String, String> entry : params.entrySet()) {
             if (bodyBuilder.length() > 0) {
