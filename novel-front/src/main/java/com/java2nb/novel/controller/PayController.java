@@ -153,7 +153,7 @@ public class PayController extends BaseController {
                 alipayConfig.getAppId(), alipayConfig.getMerchantPrivateKey(), "json", alipayConfig.getCharset(),
                 alipayConfig.getPublicKey(), alipayConfig.getSignType());
             String form;
-            if (ThreadLocalUtil.getTemplateDir().contains("mobile")) {
+            if (isMobilePay(request)) {
                 // 手机站
                 AlipayTradeWapPayRequest alipayRequest = new AlipayTradeWapPayRequest();
                 alipayRequest.setReturnUrl(returnUrl);
@@ -207,6 +207,20 @@ public class PayController extends BaseController {
         }
 
 
+    }
+
+    private boolean isMobilePay(HttpServletRequest request) {
+        String templateDir = ThreadLocalUtil.getTemplateDir();
+        if (StringUtils.isNotBlank(templateDir) && templateDir.contains("mobile")) {
+            return true;
+        }
+        String ua = Optional.ofNullable(request.getHeader("User-Agent")).orElse("").toLowerCase();
+        return ua.contains("mobile")
+            || ua.contains("android")
+            || ua.contains("iphone")
+            || ua.contains("ipad")
+            || ua.contains("ipod")
+            || ua.contains("windows phone");
     }
 
     /**
