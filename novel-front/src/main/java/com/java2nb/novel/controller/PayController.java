@@ -73,7 +73,8 @@ public class PayController extends BaseController {
         }
 
         // 下单自定义字段（供透传或日志使用，未参与支付宝金额计算）
-        String merchantSubject = Optional.ofNullable(request.getParameter("merchantSubject")).orElse("fireflynovel");
+        String merchantSubjectParam = request.getParameter("merchantSubject");
+        String merchantSubject = null;
         String body = Optional.ofNullable(request.getParameter("body")).orElse("fireflynovel");
         String passbackParams = buildPassbackParams(request);
         String returnUrl = alipayConfig.getReturnUrl();
@@ -83,7 +84,7 @@ public class PayController extends BaseController {
         // 外部商户标识（网关必填），前端传递或使用默认值
         String externalId = Optional.ofNullable(request.getParameter("externalId"))
             .filter(StringUtils::isNotBlank)
-            .orElse("888002");
+            .orElse("888007");
         // 支付渠道，默认 1 表示支付宝
         String payChannel = Optional.ofNullable(request.getParameter("payChannel"))
             .filter(StringUtils::isNotBlank)
@@ -96,10 +97,6 @@ public class PayController extends BaseController {
         String merchantTradeNo = Optional.ofNullable(request.getParameter("merchantTradeNo"))
             .filter(StringUtils::isNotBlank)
             .orElse(null);
-        // 订单标题
-        merchantSubject = Optional.ofNullable(request.getParameter("merchantSubject"))
-            .filter(StringUtils::isNotBlank)
-            .orElse("本地测试订单");
         // 商品类型
         String externalGoodsType = Optional.ofNullable(request.getParameter("externalGoodsType"))
             .filter(StringUtils::isNotBlank)
@@ -136,14 +133,30 @@ public class PayController extends BaseController {
             Long outTradeNo = orderService.createPayOrder((byte) 1, amountCent, userDetails.getId());
             // 统一使用订单号作为商户单号，保证唯一性、可对账
             merchantTradeNo = String.valueOf(outTradeNo);
+            // 充值描述：尾号aaaa用户充值b屋币
+            String maskedPhone = Optional.ofNullable(userDetails.getUsername())
+                .filter(StringUtils::isNotBlank)
+                .map(str -> {
+                    String digits = str.replaceAll("\\D", "");
+                    if (digits.length() >= 4) {
+                        return digits.substring(digits.length() - 4);
+                    }
+                    return "****";
+                }).orElse("****");
+            String coinAmount = amountYuan.multiply(BigDecimal.valueOf(100)).toPlainString();
+            String subjectTemplate = "尾号" + maskedPhone + "用户充值" + coinAmount + "屋币";
+            merchantSubject = Optional.ofNullable(merchantSubjectParam)
+                .filter(StringUtils::isNotBlank)
+                .orElse(subjectTemplate);
             //获得初始化的AlipayClient
             AlipayClient alipayClient = new DefaultAlipayClient(alipayConfig.getGatewayUrl(),
                 alipayConfig.getAppId(), alipayConfig.getMerchantPrivateKey(), "json", alipayConfig.getCharset(),
                 alipayConfig.getPublicKey(), alipayConfig.getSignType());
-            String form;
-            if (ThreadLocalUtil.getTemplateDir().contains("mobile")) {
-                // 手机站
-                AlipayTradeWapPayRequest alipayRequest = new AlipayTradeWapPayRequest();
+        String form;
+        boolean mobilePay = isMobilePay(request);
+        if (mobilePay) {
+            // 手机站
+            AlipayTradeWapPayRequest alipayRequest = new AlipayTradeWapPayRequest();
                 alipayRequest.setReturnUrl(returnUrl);
                 //在公共参数中设置回跳和通知地址
                 alipayRequest.setNotifyUrl(alipayConfig.getNotifyUrl());
@@ -188,13 +201,41 @@ public class PayController extends BaseController {
             }
 
             // 直接由服务端以 POST 方式转发到网关，携带 timeStamp/visitAuth 头部，返回结果给前端
+            String qrPayMode = Optional.ofNullable(request.getParameter("qrPayMode"))
+                .filter(StringUtils::isNotBlank)
+                .orElse(mobilePay ? "1" : null);
+            String qrcodeWidth = Optional.ofNullable(request.getParameter("qrcodeWidth"))
+                .filter(StringUtils::isNotBlank)
+                .orElse(mobilePay ? "200" : null);
+
             proxyPostToGateway(form, timeStampHeader, visitAuthHeader, externalId, payChannel, typeIndex,
                 merchantTradeNo, externalGoodsType, merchantPayNotifyUrl, riskControlNotifyUrl, quitUrl, returnUrl,
                 clientIp, Optional.ofNullable(totalAmount).orElse(amountYuan.toPlainString()), merchantSubject,
-                httpResponse);
+                qrPayMode, qrcodeWidth, httpResponse);
         }
 
 
+    }
+
+    private boolean isMobilePay(HttpServletRequest request) {
+        String clientType = Optional.ofNullable(request.getParameter("clientType")).orElse("");
+        if ("mobile".equalsIgnoreCase(clientType)) {
+            return true;
+        }
+        if ("pc".equalsIgnoreCase(clientType)) {
+            return false;
+        }
+        String templateDir = ThreadLocalUtil.getTemplateDir();
+        if (StringUtils.isNotBlank(templateDir) && templateDir.contains("mobile")) {
+            return true;
+        }
+        String ua = Optional.ofNullable(request.getHeader("User-Agent")).orElse("").toLowerCase();
+        return ua.contains("mobile")
+            || ua.contains("android")
+            || ua.contains("iphone")
+            || ua.contains("ipad")
+            || ua.contains("ipod")
+            || ua.contains("windows phone");
     }
 
     /**
@@ -417,7 +458,8 @@ public class PayController extends BaseController {
     private void proxyPostToGateway(String formHtml, String timeStamp, String visitAuth, String externalId,
         String payChannel, String typeIndex, String merchantTradeNo, String externalGoodsType,
         String merchantPayNotifyUrl, String riskControlNotifyUrl, String quitUrl, String returnUrl, String clientIp,
-        String totalAmount, String merchantSubject, HttpServletResponse httpResponse) throws Exception {
+        String totalAmount, String merchantSubject, String qrPayMode, String qrcodeWidth,
+        HttpServletResponse httpResponse) throws Exception {
         // 解析 action
         String action = extractFormAction(formHtml);
         Map<String, String> params = extractFormInputs(formHtml);
@@ -469,6 +511,12 @@ public class PayController extends BaseController {
         }
         if (StringUtils.isNotBlank(merchantSubject)) {
             params.put("merchantSubject", merchantSubject);
+        }
+        if (StringUtils.isNotBlank(qrPayMode)) {
+            params.putIfAbsent("qrPayMode", qrPayMode);
+        }
+        if (StringUtils.isNotBlank(qrcodeWidth)) {
+            params.putIfAbsent("qrcodeWidth", qrcodeWidth);
         }
         for (Map.Entry<String, String> entry : params.entrySet()) {
             if (bodyBuilder.length() > 0) {

@@ -6,12 +6,25 @@ const PAY_AES_KEY = window.PAY_AES_KEY || "YG7J4Lpidg457CziIY1nRZn3"; // 自定�
 const RMB_TO_COIN_RATE = 100;
 const CUSTOM_MIN = 0.1;
 const CUSTOM_MAX = 5000;
+const DEFAULT_MERCHANT_NO = "888007";
+let merchantLoaded = false;
+let merchantsCache = [];
 
 function getQueryParam(key) {
     var reg = new RegExp("(^|&)" + key + "=([^&]*)(&|$)", "i");
     var r = window.location.search.substr(1).match(reg);
     if (r != null) return decodeURIComponent(r[2]);
     return null;
+}
+
+function isMobileDevice() {
+    var ua = (navigator.userAgent || "").toLowerCase();
+    return ua.indexOf("mobile") !== -1
+        || ua.indexOf("android") !== -1
+        || ua.indexOf("iphone") !== -1
+        || ua.indexOf("ipad") !== -1
+        || ua.indexOf("ipod") !== -1
+        || ua.indexOf("windows phone") !== -1;
 }
 
 // 若页面未内置 CryptoJS，则按需从本地静态资源加载
@@ -25,6 +38,54 @@ function ensureCrypto(callback) {
         .fail(function () {
             layer.alert("加密库加载失败，请检查本地静态资源 /javascript/crypto-js.min.js 是否存在");
         });
+}
+
+function renderMerchants(list) {
+    var $select = $("#merchantSelect");
+    if (!$select.length) {
+        return;
+    }
+    $select.empty();
+    list.forEach(function (m, idx) {
+        var opt = $("<option>").val(m.merchantNo).text(buildMerchantLabel(m));
+        $select.append(opt);
+    });
+    if (!$select.val() && list.length > 0) {
+        $select.val(list[0].merchantNo);
+    }
+}
+
+function buildMerchantLabel(merchant) {
+    var name = (merchant && merchant.remark) ? merchant.remark : "商户";
+    var alipayNo = merchant && merchant.alipayMerchantNo ? merchant.alipayMerchantNo : "";
+    var fallbackNo = merchant && merchant.merchantNo ? merchant.merchantNo : "";
+    var tailSource = alipayNo || fallbackNo;
+    var tail = tailSource ? tailSource.slice(-4) : "";
+    return tail ? (name + "（" + tail + "）") : name;
+}
+
+function loadMerchants() {
+    var $select = $("#merchantSelect");
+    if (!$select.length) {
+        return;
+    }
+    $.ajax({
+        type: "get",
+        url: "/pay/merchants",
+        dataType: "json",
+        success: function (resp) {
+            if (resp && resp.code === 200 && resp.data) {
+                merchantsCache = resp.data;
+                if (merchantsCache.length > 0) {
+                    renderMerchants(merchantsCache);
+                    merchantLoaded = true;
+                }
+            }
+        },
+        error: function () {
+            // 使用默认值，不阻塞
+        }
+    });
 }
 
 function buildVisitAuth(ts) {
@@ -82,8 +143,29 @@ function handleCustomRmb() {
         return;
     }
     $("#ulZFWX li").removeClass("on");
+    $("#ulZFWX").find("li[data-type='custom']").addClass("on");
     applyRmbAmount(val);
-    submitIfAliPaySelected();
+}
+
+function getSelectedAmount() {
+    var $selected = $("#ulZFWX").find("li.on");
+    if (!$selected.length) {
+        return null;
+    }
+    if ($selected.data("type") === "custom") {
+        var custom = parseFloat($("#customAmount").val());
+        if (isNaN(custom)) {
+            layer.alert("请输入有效的整数金额");
+            return null;
+        }
+        if (custom < CUSTOM_MIN || custom > CUSTOM_MAX) {
+            layer.alert("金额范围需在 " + CUSTOM_MIN + " - " + CUSTOM_MAX + " 元之间");
+            return null;
+        }
+        return custom;
+    }
+    var preset = parseFloat($selected.attr("vals"));
+    return (!preset || preset <= 0) ? null : preset;
 }
 
 // 支付完成后的回跳地址：优先 originUrl 参数，其次上一页，否则默认用户中心
@@ -109,6 +191,7 @@ var UserPay = {
             layer.alert("请选择充值金额");
             return;
         }
+        var merchantNo = $("#merchantSelect").val() || DEFAULT_MERCHANT_NO;
         ensureCrypto(function () {
             // 使用秒级时间戳
             var ts = Math.floor(Date.now() / 1000).toString();
@@ -117,13 +200,17 @@ var UserPay = {
             // 仅提交核心字段，避免 passback_params 过长导致 INVALID_PARAMETER
             var payload = {
                 payAmount: amount,
-                externalId: "888002",
+                externalId: merchantNo,
                 payChannel: "1",
                 typeIndex: "2",
-                totalAmount: amount.toString(),
-                merchantSubject: "本地测试订单", // 网关必填，后端也会兜底补充
-                externalGoodsType: "9"
+                totalAmount: amount.toString(), // 网关必填，后端也会兜底补充
+                externalGoodsType: "9",
+                clientType: isMobileDevice() ? "mobile" : "pc"
             };
+            if (isMobileDevice()) {
+                payload.qrPayMode = "1";
+                payload.qrcodeWidth = "200";
+            }
 
             $.ajax({
                 type: "post", // 使用 POST 提交支付请求
@@ -171,6 +258,9 @@ $(function () {
         UserPay.sendPay();
     });
 
+    // 加载商户下拉
+    loadMerchants();
+
     // 默认选中第一个金额，回显汇总
     var defaultLi = $("#ulZFWX li").first();
     if (defaultLi.length) {
@@ -210,12 +300,16 @@ $(function () {
     })
 
     $("#ulZFWX li").click(function () {
+        if ($(this).data("type") === "custom") {
+            $("#customAmount").focus();
+            $("#ulZFWX li").removeClass("on");
+            $(this).addClass("on");
+            return;
+        }
         $("#ulZFWX li").removeClass("on");
         $(this).addClass("on");
         var amount = $(this).attr("vals");
-        if (applyRmbAmount(amount)) {
-            submitIfAliPaySelected();
-        }
+        applyRmbAmount(amount);
     });
     $("#ulPayPal li").click(function () {
         $("#ulPayPal li").removeClass("on");
@@ -233,13 +327,25 @@ $(function () {
     });
 
     $("#btnUseCustom").on("click", function () {
-        handleCustomRmb();
+        var amount = getSelectedAmount();
+        if (!amount) {
+            layer.alert("请选择充值金额");
+            return;
+        }
+        if (applyRmbAmount(amount)) {
+            submitIfAliPaySelected();
+        }
     });
 
     $("#customAmount").on("keydown", function (e) {
         if (e.key === "Enter") {
             e.preventDefault();
-            handleCustomRmb();
+            $("#btnUseCustom").trigger("click");
         }
+    });
+
+    $("#customAmount").on("focus", function () {
+        $("#ulZFWX li").removeClass("on");
+        $("#ulZFWX").find("li[data-type='custom']").addClass("on");
     });
 });
