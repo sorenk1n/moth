@@ -30,6 +30,12 @@
                         <li valp="2"><img class="pay_pic" src="../images/pay_wx.png" alt="微信支付"/></li>
 
                     </ul>
+                    <h5>选择商户</h5>
+                    <div class="pay_way cf" style="padding:10px 0;">
+                        <select id="merchantSelect" style="min-width:200px;height:32px;line-height:32px;">
+                            <option value="888007">默认商户（8007）</option>
+                        </select>
+                    </div>
                     <h5>选择充值金额</h5>
                     <ul class="pay_way cf" id="ulZFWX">
                         <li vals="10"><strong>10元</strong><span class="pay_mn">1000屋币</span></li>
@@ -42,14 +48,17 @@
                             <!--<em class="red">+ 送3000代金券</em>--></span></li>
                         <li vals="500"><strong>500元</strong><span class="pay_mn">50000屋币
                             <!--<em class="red">+ 送10000代金券</em>--></span></li>
+                        <li class="custom_amount" data-type="custom">
+                            <strong>自定义金额</strong>
+                            <span class="pay_mn">
+                                <input type="number" id="customAmount" min="1" step="1" placeholder="请输入金额（元）"
+                                       style="width:120px;height:28px;line-height:28px;padding:0 6px;"/>
+                            </span>
+                        </li>
                     </ul>
-                    <div class="pay_custom" style="margin: 10px 0 0 0;">
-                        <label for="customAmount">自定义金额：</label>
-                        <input type="number" id="customAmount" min="1" step="1" placeholder="请输入金额（元）"
-                               style="width:140px;height:32px;line-height:32px;padding:0 8px;"/>
+                    <div style="margin-top:8px;">
                         <button type="button" id="btnUseCustom"
-                                style="height:34px;padding:0 14px;margin-left:8px;">确认金额</button>
-                        <p style="margin:6px 0 0 0;color:#999;">1元=100屋币，最低1元，最高5000元，支持整数金额。</p>
+                                style="height:38px;min-width:120px;padding:0 18px;font-size:14px;">确认金额</button>
                     </div>
                     <ul class="pay_way cf" style="display:none;" id="ulPayPal">
                         <li vals="20"><strong>20美元</strong><span class="pay_mn">10000屋币</span></li>
