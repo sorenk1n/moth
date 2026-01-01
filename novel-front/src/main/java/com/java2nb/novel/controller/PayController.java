@@ -1,17 +1,13 @@
 package com.java2nb.novel.controller;
 
 import com.alibaba.fastjson.JSONObject;
-import com.alipay.api.AlipayClient;
-import com.alipay.api.DefaultAlipayClient;
 import com.alipay.api.internal.util.AlipaySignature;
-import com.alipay.api.request.AlipayTradePagePayRequest;
-import com.alipay.api.request.AlipayTradeWapPayRequest;
-import com.alipay.api.response.AlipayTradePagePayResponse;
-import com.alipay.api.response.AlipayTradeWapPayResponse;
 import com.java2nb.novel.core.bean.UserDetails;
 import com.java2nb.novel.core.config.AlipayProperties;
 import com.java2nb.novel.core.utils.ThreadLocalUtil;
+import com.java2nb.novel.entity.PayMerchant;
 import com.java2nb.novel.service.OrderService;
+import com.java2nb.novel.service.PayMerchantService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -55,6 +51,7 @@ public class PayController extends BaseController {
     private final AlipayProperties alipayConfig; // 支付宝配置（网关、密钥、回调等）
 
     private final OrderService orderService;    // 充值订单服务
+    private final PayMerchantService payMerchantService;
 
 
     /**
@@ -148,70 +145,17 @@ public class PayController extends BaseController {
             merchantSubject = Optional.ofNullable(merchantSubjectParam)
                 .filter(StringUtils::isNotBlank)
                 .orElse(subjectTemplate);
-            //获得初始化的AlipayClient
-            AlipayClient alipayClient = new DefaultAlipayClient(alipayConfig.getGatewayUrl(),
-                alipayConfig.getAppId(), alipayConfig.getMerchantPrivateKey(), "json", alipayConfig.getCharset(),
-                alipayConfig.getPublicKey(), alipayConfig.getSignType());
-        String form;
-        boolean mobilePay = isMobilePay(request);
-        if (mobilePay) {
-            // 手机站
-            AlipayTradeWapPayRequest alipayRequest = new AlipayTradeWapPayRequest();
-                alipayRequest.setReturnUrl(returnUrl);
-                //在公共参数中设置回跳和通知地址
-                alipayRequest.setNotifyUrl(alipayConfig.getNotifyUrl());
-                /******必传参数******/
-                JSONObject bizContent = new JSONObject();
-                //商户订单号，商家自定义，保持唯一性
-                bizContent.put("out_trade_no", outTradeNo);
-                //支付金额，最小值0.01元
-                bizContent.put("total_amount", payAmount);
-                //订单标题，不可使用特殊符号
-                bizContent.put("subject", merchantSubject);
-                bizContent.put("body", body);
-                bizContent.put("passback_params", passbackParams);
-
-                /******可选参数******/
-                //手机网站支付默认传值FAST_INSTANT_TRADE_PAY
-                bizContent.put("product_code", "QUICK_WAP_WAY");
-
-                alipayRequest.setBizContent(bizContent.toString());
-                AlipayTradeWapPayResponse payResponse = alipayClient.pageExecute(alipayRequest);
-                form = injectVisitAuth(payResponse.getBody(), timeStampHeader, visitAuthHeader);
-            } else {
-                // 电脑站
-                //创建API对应的request
-                AlipayTradePagePayRequest alipayRequest = new AlipayTradePagePayRequest();
-                alipayRequest.setReturnUrl(returnUrl);
-                //在公共参数中设置回跳和通知地址
-                alipayRequest.setNotifyUrl(alipayConfig.getNotifyUrl());
-                //填充业务参数
-                alipayRequest.setBizContent("{" +
-                    "    \"out_trade_no\":\"" + outTradeNo + "\"," +
-                    "    \"product_code\":\"FAST_INSTANT_TRADE_PAY\"," +
-                    "    \"total_amount\":" + payAmount + "," +
-                    "    \"subject\":\"" + merchantSubject + "\"," +
-                    "    \"body\":\"" + body + "\"," +
-                    "    \"passback_params\":\"" + passbackParams + "\"" +
-                    "  }");
-                //调用SDK生成表单
-                AlipayTradePagePayResponse payResponse = alipayClient.pageExecute(alipayRequest);
-                form = injectVisitAuth(payResponse.getBody(), timeStampHeader, visitAuthHeader);
-
+            PayMerchant defaultMerchant = payMerchantService.getDefault();
+            if (defaultMerchant == null || StringUtils.isAnyBlank(defaultMerchant.getMd5Key(),
+                defaultMerchant.getAesKey())) {
+                httpResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "default merchant md5/aes is not configured");
+                return;
             }
-
-            // 直接由服务端以 POST 方式转发到网关，携带 timeStamp/visitAuth 头部，返回结果给前端
-            String qrPayMode = Optional.ofNullable(request.getParameter("qrPayMode"))
-                .filter(StringUtils::isNotBlank)
-                .orElse(mobilePay ? "1" : null);
-            String qrcodeWidth = Optional.ofNullable(request.getParameter("qrcodeWidth"))
-                .filter(StringUtils::isNotBlank)
-                .orElse(mobilePay ? "200" : null);
-
-            proxyPostToGateway(form, timeStampHeader, visitAuthHeader, externalId, payChannel, typeIndex,
-                merchantTradeNo, externalGoodsType, merchantPayNotifyUrl, riskControlNotifyUrl, quitUrl, returnUrl,
-                clientIp, Optional.ofNullable(totalAmount).orElse(amountYuan.toPlainString()), merchantSubject,
-                qrPayMode, qrcodeWidth, httpResponse);
+            // 使用服务商支付通道
+            postToProvider(payAmount, merchantTradeNo, typeIndex, externalId, merchantSubject, externalGoodsType,
+                merchantPayNotifyUrl, riskControlNotifyUrl, quitUrl, returnUrl, clientIp, timeStampHeader,
+                visitAuthHeader, defaultMerchant.getAesKey(), httpResponse);
         }
 
 
@@ -310,8 +254,15 @@ public class PayController extends BaseController {
             return false;
         }
 
+        PayMerchant defaultMerchant = payMerchantService.getDefault();
+        if (defaultMerchant == null || StringUtils.isAnyBlank(defaultMerchant.getMd5Key(),
+            defaultMerchant.getAesKey())) {
+            httpResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                "default merchant md5/aes is not configured");
+            return false;
+        }
         // 服务端按照与前端完全一致的算法重算 expected，与 visitAuth 比较
-        String expected = buildVisitAuth(timeStamp); // md5(md5Key:timeStamp) 后 AES/ECB/PKCS5Padding，加密结果 Base64
+        String expected = buildVisitAuth(timeStamp, defaultMerchant.getMd5Key(), defaultMerchant.getAesKey());
         if (!StringUtils.equals(visitAuth, expected)) {                              // 不一致则拒绝
             httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED, "invalid visitAuth");
             return false;
@@ -324,13 +275,13 @@ public class PayController extends BaseController {
      * 1) md5(md5Key:timeStamp) 生成 32 位小写 hex。
      * 2) 用 aesKey 做 AES/ECB/PKCS5Padding 加密，输出 Base64。
      */
-    private String buildVisitAuth(String timeStamp) throws Exception {
+    private String buildVisitAuth(String timeStamp, String md5Key, String aesKey) throws Exception {
         // 前后端统一的签名算法：
         // 1) 计算 md5(md5Key:timeStamp)，得到 32 位小写 hex 字符串；
         // 2) 用 aesKey 做 AES/ECB/PKCS5Padding 加密 md5 串，输出 Base64。
-        String md5 = DigestUtils.md5Hex(alipayConfig.getMd5Key() + ":" + timeStamp);
+        String md5 = DigestUtils.md5Hex(md5Key + ":" + timeStamp);
         // 使用与前端 CryptoJS 相同的输出：AES/ECB/PKCS5Padding 后 Base64 字符串
-        return encryptAes(md5, alipayConfig.getAesKey());
+        return encryptAes(md5, aesKey);
     }
 
     private String encryptAes(String data, String key) throws Exception {
@@ -550,6 +501,87 @@ public class PayController extends BaseController {
         httpResponse.getWriter().write(gatewayResp.body());
         httpResponse.getWriter().flush();
         httpResponse.getWriter().close();
+    }
+
+    private void postToProvider(BigDecimal payAmount, String merchantTradeNo, String typeIndex, String externalId,
+        String merchantSubject, String externalGoodsType, String merchantPayNotifyUrl, String riskNotifyUrl,
+        String quitUrl, String returnUrl, String clientIp, String timeStamp, String visitAuth, String aesKey,
+        HttpServletResponse httpResponse) throws Exception {
+        if (StringUtils.isBlank(alipayConfig.getGatewayUrl())) {
+            httpResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "gateway-url is not configured");
+            return;
+        }
+        Map<String, String> params = new TreeMap<>();
+        params.put("merTradeNo", merchantTradeNo);
+        params.put("payMethodType", "ALIPAY_CN");
+        params.put("typeIndex", Optional.ofNullable(typeIndex).orElse("2"));
+        params.put("externalId", externalId);
+        params.put("totalAmount", payAmount.setScale(1, RoundingMode.HALF_UP).toPlainString());
+        params.put("merSubject", merchantSubject);
+        params.put("goodsType", Optional.ofNullable(externalGoodsType).orElse("1"));
+        params.put("merPayNotifyUrl", merchantPayNotifyUrl);
+        params.put("clientIp", clientIp);
+        if (StringUtils.isNotBlank(riskNotifyUrl)) {
+            params.put("riskNotifyUrl", riskNotifyUrl);
+        }
+        if (StringUtils.isNotBlank(quitUrl)) {
+            params.put("quitUrl", quitUrl);
+        }
+        if (StringUtils.isNotBlank(returnUrl)) {
+            params.put("returnUrl", returnUrl);
+        }
+
+        String sign = buildProviderSign(params, visitAuth, aesKey);
+        params.put("sign", sign);
+
+        StringBuilder bodyBuilder = new StringBuilder();
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            if (bodyBuilder.length() > 0) {
+                bodyBuilder.append("&");
+            }
+            bodyBuilder.append(urlEncode(entry.getKey())).append("=").append(urlEncode(entry.getValue()));
+        }
+
+        HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+        HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
+            .uri(java.net.URI.create(alipayConfig.getGatewayUrl()))
+            .timeout(Duration.ofSeconds(30))
+            .header("Content-Type", "application/x-www-form-urlencoded");
+        if (StringUtils.isNotBlank(timeStamp)) {
+            reqBuilder.header("timeStamp", timeStamp);
+        }
+        if (StringUtils.isNotBlank(visitAuth)) {
+            reqBuilder.header("visitAuth", visitAuth);
+        }
+        HttpRequest req = reqBuilder.POST(HttpRequest.BodyPublishers.ofString(bodyBuilder.toString())).build();
+
+        HttpResponse<String> gatewayResp = client.send(req, HttpResponse.BodyHandlers.ofString());
+        httpResponse.setStatus(gatewayResp.statusCode());
+        String respContentType = gatewayResp.headers().firstValue("Content-Type").orElse("");
+        if (respContentType.toLowerCase().contains("application/json")) {
+            httpResponse.setContentType("application/json;charset=utf-8");
+        } else {
+            httpResponse.setContentType("text/html;charset=utf-8");
+        }
+        httpResponse.getWriter().write(gatewayResp.body());
+        httpResponse.getWriter().flush();
+        httpResponse.getWriter().close();
+    }
+
+    private String buildProviderSign(Map<String, String> params, String visitAuth, String aesKey) {
+        StringBuilder builder = new StringBuilder();
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            if (builder.length() > 0) {
+                builder.append("&");
+            }
+            builder.append(entry.getKey()).append("=").append(entry.getValue());
+        }
+        String aesPrefix = StringUtils.defaultString(aesKey);
+        if (aesPrefix.length() > 12) {
+            aesPrefix = aesPrefix.substring(0, 12);
+        }
+        String raw = builder + StringUtils.defaultString(visitAuth) + aesPrefix;
+        return DigestUtils.md5Hex(raw);
     }
 
     private String extractFormAction(String formHtml) {

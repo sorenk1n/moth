@@ -72,6 +72,8 @@ function renderMerchants(list) {
             "<tr data-id=\"" + m.id + "\">",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + name + isDefault + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + (m.alipayMerchantNo || "") + "</td>",
+            "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + (m.md5Key || "") + "</td>",
+            "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + (m.aesKey || "") + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + statusEditor + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">",
             "<a href=\"javascript:void(0);\" class=\"btn_default\" data-id=\"" + m.id + "\">设为默认</a>",

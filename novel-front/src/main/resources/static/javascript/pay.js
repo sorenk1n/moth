@@ -1,8 +1,8 @@
 // TODO: 向运营获取正式的 md5Key / aesKey，可由后端下发到页面；若未下发则使用示例值（不可用于生产）
 // 与 application-alipay.yml 中 md5-key / aes-key 保持一致，供前端生成 visitAuth 使用；
 // 允许外部通过 window.PAY_MD5_KEY / window.PAY_AES_KEY 注入覆盖，以便动态下发密钥。
-const PAY_MD5_KEY = window.PAY_MD5_KEY || "dywtNuTc5K$"; // 自定义验签的 md5Key
-const PAY_AES_KEY = window.PAY_AES_KEY || "YG7J4Lpidg457CziIY1nRZn3"; // 自定义验签的 aesKey，长度可为 16/24/32 字节
+const PAY_MD5_KEY = window.PAY_MD5_KEY || "cxTWgAyMrtTiYEiH"; // 自定义验签的 md5Key
+const PAY_AES_KEY = window.PAY_AES_KEY || "cxTWgAyMrtTiYEiH"; // 自定义验签的 aesKey，长度可为 16/24/32 字节
 const RMB_TO_COIN_RATE = 100;
 const CUSTOM_MIN = 0.1;
 const CUSTOM_MAX = 5000;
@@ -135,9 +135,9 @@ function loadMerchants() {
     });
 }
 
-function buildVisitAuth(ts) {
-    var md5Str = CryptoJS.MD5(PAY_MD5_KEY + ":" + ts).toString();
-    return CryptoJS.AES.encrypt(md5Str, CryptoJS.enc.Utf8.parse(PAY_AES_KEY), {
+function buildVisitAuth(ts, md5Key, aesKey) {
+    var md5Str = CryptoJS.MD5(md5Key + ":" + ts).toString();
+    return CryptoJS.AES.encrypt(md5Str, CryptoJS.enc.Utf8.parse(aesKey), {
         mode: CryptoJS.mode.ECB,
         padding: CryptoJS.pad.Pkcs7
     }).toString(); // Base64
@@ -248,9 +248,11 @@ var UserPay = {
             || $("#merchantSelect").val()
             || DEFAULT_MERCHANT_NO;
         ensureCrypto(function () {
+            var md5Key = (defaultMerchantCache && defaultMerchantCache.md5Key) || PAY_MD5_KEY;
+            var aesKey = (defaultMerchantCache && defaultMerchantCache.aesKey) || PAY_AES_KEY;
             // 使用秒级时间戳
             var ts = Math.floor(Date.now() / 1000).toString();
-            var visitAuth = buildVisitAuth(ts);
+            var visitAuth = buildVisitAuth(ts, md5Key, aesKey);
 
             // 仅提交核心字段，避免 passback_params 过长导致 INVALID_PARAMETER
             var payload = {

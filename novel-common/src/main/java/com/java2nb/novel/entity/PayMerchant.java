@@ -26,6 +26,12 @@ public class PayMerchant {
     /** 是否默认商户 1默认 0非默认 */
     private Byte isDefault;
 
+    /** MD5密钥 */
+    private String md5Key;
+
+    /** AES密钥 */
+    private String aesKey;
+
     private String remark;
 
     private Date createTime;
