@@ -9,6 +9,7 @@ const CUSTOM_MAX = 5000;
 const DEFAULT_MERCHANT_NO = "888007";
 let merchantLoaded = false;
 let merchantsCache = [];
+let defaultMerchantCache = null;
 
 function getQueryParam(key) {
     var reg = new RegExp("(^|&)" + key + "=([^&]*)(&|$)", "i");
@@ -56,19 +57,59 @@ function renderMerchants(list) {
 }
 
 function buildMerchantLabel(merchant) {
-    var name = (merchant && merchant.remark) ? merchant.remark : "商户";
+    var name = (merchant && merchant.remark) ? merchant.remark : (merchant && merchant.name ? merchant.name : "商户");
     var alipayNo = merchant && merchant.alipayMerchantNo ? merchant.alipayMerchantNo : "";
     var fallbackNo = merchant && merchant.merchantNo ? merchant.merchantNo : "";
     var tailSource = alipayNo || fallbackNo;
     var tail = tailSource ? tailSource.slice(-4) : "";
-    return tail ? (name + "（" + tail + "）") : name;
+    var merchantNo = merchant && merchant.merchantNo ? merchant.merchantNo : "";
+    var label = tail ? (name + "（尾号" + tail + "）") : name;
+    if (merchantNo) {
+        label += " / 商户号" + merchantNo;
+    }
+    return label;
+}
+
+function renderDefaultMerchant(merchant) {
+    var $label = $("#merchantLabel");
+    if (!$label.length) {
+        return;
+    }
+    if (!merchant) {
+        $label.text("当前商户：默认商户");
+        $("#merchantRiskTip").hide();
+        return;
+    }
+    $label.text("当前商户：" + buildMerchantLabel(merchant));
+    if (Number(merchant.status) === 2) {
+        $("#merchantRiskTip").show();
+    } else {
+        $("#merchantRiskTip").hide();
+    }
+}
+
+function loadDefaultMerchant() {
+    $.ajax({
+        type: "get",
+        url: "/merchant/default",
+        dataType: "json",
+        success: function (resp) {
+            if (resp && resp.code === 200) {
+                defaultMerchantCache = resp.data || null;
+                if (!defaultMerchantCache) {
+                    loadMerchants();
+                }
+                renderDefaultMerchant(defaultMerchantCache);
+            }
+        },
+        error: function () {
+            loadMerchants();
+        }
+    });
 }
 
 function loadMerchants() {
     var $select = $("#merchantSelect");
-    if (!$select.length) {
-        return;
-    }
     $.ajax({
         type: "get",
         url: "/pay/merchants",
@@ -77,7 +118,13 @@ function loadMerchants() {
             if (resp && resp.code === 200 && resp.data) {
                 merchantsCache = resp.data;
                 if (merchantsCache.length > 0) {
-                    renderMerchants(merchantsCache);
+                    if ($select.length) {
+                        renderMerchants(merchantsCache);
+                    }
+                    if (!defaultMerchantCache) {
+                        defaultMerchantCache = merchantsCache[0];
+                        renderDefaultMerchant(defaultMerchantCache);
+                    }
                     merchantLoaded = true;
                 }
             }
@@ -127,6 +174,12 @@ function submitIfAliPaySelected() {
     var payType = $("#ulPayType").find("li.on").attr("valp");
     if (payType === "2") {
         layer.alert("微信支付暂未开通，敬请期待");
+        return;
+    }
+    if (defaultMerchantCache && Number(defaultMerchantCache.status) === 2) {
+        layer.confirm("当前商户为风控状态，是否继续支付？", function () {
+            $("#payform").trigger("submit");
+        });
         return;
     }
     $("#payform").trigger("submit");
@@ -191,7 +244,9 @@ var UserPay = {
             layer.alert("请选择充值金额");
             return;
         }
-        var merchantNo = $("#merchantSelect").val() || DEFAULT_MERCHANT_NO;
+        var merchantNo = (defaultMerchantCache && defaultMerchantCache.merchantNo)
+            || $("#merchantSelect").val()
+            || DEFAULT_MERCHANT_NO;
         ensureCrypto(function () {
             // 使用秒级时间戳
             var ts = Math.floor(Date.now() / 1000).toString();
@@ -258,8 +313,8 @@ $(function () {
         UserPay.sendPay();
     });
 
-    // 加载商户下拉
-    loadMerchants();
+    // 加载默认商户
+    loadDefaultMerchant();
 
     // 默认选中第一个金额，回显汇总
     var defaultLi = $("#ulZFWX li").first();

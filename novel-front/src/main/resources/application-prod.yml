@@ -3,17 +3,13 @@ spring:
     import: classpath:application-common-prod.yml
 
   #静态文件路径配置
-  #thymeleaf模版路径配置
+  #thymeleaf模版路径配置（固定使用 classpath，不再切换主题）
   thymeleaf:
-    prefix: file:${user.dir}/templates/${templates.name}/html/
+    prefix: classpath:/templates/
     suffix: .html
   web:
     resources:
-      static-locations: file:${user.dir}/templates/${templates.name}/static/
-
-#模版配置
-templates:
-  name: green
+      static-locations: classpath:/static/
 
 
 pic:

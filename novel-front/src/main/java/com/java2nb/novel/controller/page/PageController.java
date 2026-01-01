@@ -140,6 +140,14 @@ public class PageController extends BaseController {
         return ThreadLocalUtil.getTemplateDir() + "pay/index.html";
     }
 
+    /**
+     * 商户管理页
+     */
+    @RequestMapping("merchant/index.html")
+    public String merchant() {
+        return ThreadLocalUtil.getTemplateDir() + "merchant/index.html";
+    }
+
 
     /**
      * 作品页

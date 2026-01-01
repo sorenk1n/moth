@@ -1,0 +1,93 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title th:text="'商户切换_'+${application.website.name}"></title>
+    <link rel="stylesheet" href="/css/base.css"/>
+    <link rel="stylesheet" href="/css/main.css"/>
+    <style type="text/css">
+        body { background: #f7f7f7; }
+        .merchant-page { max-width: 980px; margin: 30px auto; background: #fff; padding: 24px; border: 1px solid #eee; }
+        .module-title { font-size: 18px; margin: 0 0 12px 0; }
+        .module { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid #f1f1f1; }
+        .current-box { padding: 12px 14px; background: #fafafa; border: 1px solid #eee; }
+        .current-box .status { margin-left: 10px; }
+        .merchant-list table { width: 100%; border-collapse: collapse; }
+        .merchant-list th, .merchant-list td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #f1f1f1; }
+        .merchant-actions a { margin-right: 8px; }
+        .statusEditor {
+            display: inline-block;
+            padding: 4px 10px;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            background: #fff;
+            cursor: pointer;
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+        .statusEditor:hover {
+            transform: scale(1.06);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+        .btn_default {
+            display: inline-block;
+            padding: 4px 10px;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            background: #fff;
+            cursor: pointer;
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+        .btn_default:hover {
+            transform: scale(1.06);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+    </style>
+</head>
+<body>
+
+<div class="merchant-page">
+    <div class="module">
+        <h3 class="module-title">当前全局商户</h3>
+        <div class="current-box">
+            <span id="currentMerchantLabel">加载中...</span>
+            <span id="currentMerchantStatus" class="status"></span>
+        </div>
+    </div>
+
+    <div class="module merchant-list">
+        <h3 class="module-title">更换其他商户</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>商户全称</th>
+                <th>支付宝商户号</th>
+                <th>状态</th>
+                <th>操作</th>
+            </tr>
+            </thead>
+            <tbody id="merchantTbody"></tbody>
+        </table>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:10px;">
+            <button type="button" id="merchantPrev" style="height:30px;padding:0 12px;">上一页</button>
+            <span id="merchantPageInfo"></span>
+            <button type="button" id="merchantNext" style="height:30px;padding:0 12px;">下一页</button>
+            <span style="margin-left:auto;">
+                每页
+                <select id="merchantPageSize" style="height:30px;line-height:30px;">
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                </select>
+                条
+            </span>
+        </div>
+    </div>
+</div>
+
+<div th:replace="common/js :: js"></div>
+<script src="/javascript/merchant.js" type="text/javascript"></script>
+
+</body>
+</html>
