@@ -119,6 +119,8 @@ public class PayController extends BaseController {
             .filter(StringUtils::isNotBlank)
             .orElse(null);
 
+        String groupExternalId = "group001";
+
         UserDetails userDetails = getUserDetails(request);
         if (userDetails == null) {
             //未登录，跳转到登录页面
@@ -154,7 +156,7 @@ public class PayController extends BaseController {
             }
             // 使用服务商支付通道
             postToProvider(payAmount, merchantTradeNo, typeIndex, externalId, merchantSubject, externalGoodsType,
-                merchantPayNotifyUrl, riskControlNotifyUrl, quitUrl, returnUrl, clientIp, timeStampHeader,
+                merchantPayNotifyUrl, riskControlNotifyUrl, quitUrl, returnUrl, clientIp, timeStampHeader, groupExternalId,
                 visitAuthHeader, defaultMerchant.getAesKey(), httpResponse);
         }
 
@@ -505,7 +507,7 @@ public class PayController extends BaseController {
 
     private void postToProvider(BigDecimal payAmount, String merchantTradeNo, String typeIndex, String externalId,
         String merchantSubject, String externalGoodsType, String merchantPayNotifyUrl, String riskNotifyUrl,
-        String quitUrl, String returnUrl, String clientIp, String timeStamp, String visitAuth, String aesKey,
+        String quitUrl, String returnUrl, String clientIp, String timeStamp, String visitAuth, String aesKey,String groupExternalId,
         HttpServletResponse httpResponse) throws Exception {
         if (StringUtils.isBlank(alipayConfig.getGatewayUrl())) {
             httpResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "gateway-url is not configured");
