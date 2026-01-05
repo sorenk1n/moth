@@ -7,6 +7,8 @@ const RMB_TO_COIN_RATE = 100;
 const CUSTOM_MIN = 0.1;
 const CUSTOM_MAX = 5000;
 const DEFAULT_MERCHANT_NO = "888007";
+const TYPE_INDEX_PC = "2";
+const TYPE_INDEX_MOBILE = "1";
 let merchantLoaded = false;
 let merchantsCache = [];
 let defaultMerchantCache = null;
@@ -26,6 +28,10 @@ function isMobileDevice() {
         || ua.indexOf("ipad") !== -1
         || ua.indexOf("ipod") !== -1
         || ua.indexOf("windows phone") !== -1;
+}
+
+function resolveTypeIndex() {
+    return isMobileDevice() ? TYPE_INDEX_MOBILE : TYPE_INDEX_PC;
 }
 
 // 若页面未内置 CryptoJS，则按需从本地静态资源加载
@@ -253,18 +259,19 @@ var UserPay = {
             // 使用秒级时间戳
             var ts = Math.floor(Date.now() / 1000).toString();
             var visitAuth = buildVisitAuth(ts, md5Key, aesKey);
+            var isMobile = isMobileDevice();
 
             // 仅提交核心字段，避免 passback_params 过长导致 INVALID_PARAMETER
             var payload = {
                 payAmount: amount,
                 externalId: merchantNo,
                 payChannel: "1",
-                typeIndex: "2",
+                typeIndex: resolveTypeIndex(),
                 totalAmount: amount.toString(), // 网关必填，后端也会兜底补充
                 externalGoodsType: "9",
-                clientType: isMobileDevice() ? "mobile" : "pc"
+                clientType: isMobile ? "mobile" : "pc"
             };
-            if (isMobileDevice()) {
+            if (isMobile) {
                 payload.qrPayMode = "1";
                 payload.qrcodeWidth = "200";
             }

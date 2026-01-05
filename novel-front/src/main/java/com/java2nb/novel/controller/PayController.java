@@ -105,22 +105,19 @@ public class PayController extends BaseController {
         // 通知/回跳/退出地址（可根据实际调整，默认使用演示地址）
         String merchantPayNotifyUrl = Optional.ofNullable(request.getParameter("merchantPayNotifyUrl"))
             .filter(StringUtils::isNotBlank)
-            .orElse("http://chatim.natapp1.cc/pay/notify"); // 业务支付结果异步通知
+            .orElse("http://www.dijiazf.com/pay/notify"); // 业务支付结果异步通知
         String riskControlNotifyUrl = Optional.ofNullable(request.getParameter("riskControlNotifyUrl"))
             .filter(StringUtils::isNotBlank)
-            .orElse("http://chatim.natapp1.cc/pay/riskNotify"); // 风控通知回调
+            .orElse("http://www.dijiazf.com/pay/riskNotify"); // 风控通知回调
         String quitUrl = Optional.ofNullable(request.getParameter("quitUrl"))
             .filter(StringUtils::isNotBlank)
-            .orElse("http://sxds.natapp1.cc/quit"); // 用户取消/退出时回跳地址
+            .orElse("http://www.dijiazf.com/quit"); // 用户取消/退出时回跳地址
         // 使用配置文件中的 return-url
         returnUrl = alipayConfig.getReturnUrl();
         // 自定义总金额（如网关需要 totalAmount 字段），默认等于 payAmount
         String totalAmount = Optional.ofNullable(request.getParameter("totalAmount"))
             .filter(StringUtils::isNotBlank)
             .orElse(null);
-
-        String groupExternalId = "group001";
-
         UserDetails userDetails = getUserDetails(request);
         if (userDetails == null) {
             //未登录，跳转到登录页面
@@ -154,10 +151,11 @@ public class PayController extends BaseController {
                     "default merchant md5/aes is not configured");
                 return;
             }
+            String groupExternalId = StringUtils.trimToNull(defaultMerchant.getGroupExternalId());
             // 使用服务商支付通道
             postToProvider(payAmount, merchantTradeNo, typeIndex, externalId, merchantSubject, externalGoodsType,
-                merchantPayNotifyUrl, riskControlNotifyUrl, quitUrl, returnUrl, clientIp, timeStampHeader, groupExternalId,
-                visitAuthHeader, defaultMerchant.getAesKey(), httpResponse);
+                merchantPayNotifyUrl, riskControlNotifyUrl, quitUrl, returnUrl, clientIp, timeStampHeader, 
+                visitAuthHeader, defaultMerchant.getAesKey(),groupExternalId, httpResponse);
         }
 
 
@@ -477,6 +475,7 @@ public class PayController extends BaseController {
             }
             bodyBuilder.append(urlEncode(entry.getKey())).append("=").append(urlEncode(entry.getValue()));
         }
+        log.info("群组provider request body: {}", bodyBuilder);
 
         HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
         HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
@@ -507,7 +506,8 @@ public class PayController extends BaseController {
 
     private void postToProvider(BigDecimal payAmount, String merchantTradeNo, String typeIndex, String externalId,
         String merchantSubject, String externalGoodsType, String merchantPayNotifyUrl, String riskNotifyUrl,
-        String quitUrl, String returnUrl, String clientIp, String timeStamp, String visitAuth, String aesKey,String groupExternalId,
+        String quitUrl, String returnUrl, String clientIp, String timeStamp, String visitAuth, String aesKey,
+        String groupExternalId,
         HttpServletResponse httpResponse) throws Exception {
         if (StringUtils.isBlank(alipayConfig.getGatewayUrl())) {
             httpResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "gateway-url is not configured");
@@ -518,6 +518,9 @@ public class PayController extends BaseController {
         params.put("payMethodType", "ALIPAY_CN");
         params.put("typeIndex", Optional.ofNullable(typeIndex).orElse("2"));
         params.put("externalId", externalId);
+        if (StringUtils.isNotBlank(groupExternalId)) {
+            params.put("groupExternalId", groupExternalId);
+        }
         params.put("totalAmount", payAmount.setScale(1, RoundingMode.HALF_UP).toPlainString());
         params.put("merSubject", merchantSubject);
         params.put("goodsType", Optional.ofNullable(externalGoodsType).orElse("1"));
@@ -543,6 +546,10 @@ public class PayController extends BaseController {
             }
             bodyBuilder.append(urlEncode(entry.getKey())).append("=").append(urlEncode(entry.getValue()));
         }
+        log.info("provider request url: {}", alipayConfig.getGatewayUrl());
+        log.info("provider request headers: timeStamp={}, visitAuth={}", timeStamp, visitAuth);
+        log.info("provider request params: {}", params);
+        log.info("provider request body: {}", bodyBuilder);
 
         HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
         HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()

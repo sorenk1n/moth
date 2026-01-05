@@ -32,6 +32,9 @@ public class PayMerchant {
     /** AES密钥 */
     private String aesKey;
 
+    /** 商户分组外部标识 */
+    private String groupExternalId;
+
     private String remark;
 
     private Date createTime;

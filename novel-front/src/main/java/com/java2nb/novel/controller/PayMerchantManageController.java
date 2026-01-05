@@ -37,6 +37,7 @@ public class PayMerchantManageController {
     public RestResult<Void> create(@RequestParam String merchantNo,
         @RequestParam String name,
         @RequestParam(required = false) String alipayMerchantNo,
+        @RequestParam(required = false) String groupExternalId,
         @RequestParam(required = false) String remark,
         @RequestParam(required = false) Byte status) {
         if (StringUtils.isAnyBlank(merchantNo, name)) {
@@ -46,6 +47,7 @@ public class PayMerchantManageController {
         merchant.setMerchantNo(merchantNo.trim());
         merchant.setName(name.trim());
         merchant.setAlipayMerchantNo(StringUtils.trimToNull(alipayMerchantNo));
+        merchant.setGroupExternalId(StringUtils.trimToNull(groupExternalId));
         merchant.setRemark(StringUtils.trimToNull(remark));
         merchant.setStatus(status);
         payMerchantService.create(merchant);
