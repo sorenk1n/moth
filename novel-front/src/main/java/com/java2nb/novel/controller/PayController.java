@@ -519,7 +519,7 @@ public class PayController extends BaseController {
         params.put("typeIndex", Optional.ofNullable(typeIndex).orElse("2"));
         params.put("externalId", externalId);
         if (StringUtils.isNotBlank(groupExternalId)) {
-            params.put("groupExternalId", groupExternalId);
+            params.put("groupExternalId", groupExternalId.trim());
         }
         params.put("totalAmount", payAmount.setScale(1, RoundingMode.HALF_UP).toPlainString());
         params.put("merSubject", merchantSubject);
@@ -536,20 +536,20 @@ public class PayController extends BaseController {
             params.put("returnUrl", returnUrl);
         }
 
-        String sign = buildProviderSign(params, visitAuth, aesKey);
-        params.put("sign", sign);
+        String sign = buildProviderSign(params, visitAuth, aesKey); // 按网关规则生成签名
+        params.put("sign", sign); // 将签名加入请求参数
 
         StringBuilder bodyBuilder = new StringBuilder();
         for (Map.Entry<String, String> entry : params.entrySet()) {
             if (bodyBuilder.length() > 0) {
                 bodyBuilder.append("&");
             }
-            bodyBuilder.append(urlEncode(entry.getKey())).append("=").append(urlEncode(entry.getValue()));
+            bodyBuilder.append(urlEncode(entry.getKey())).append("=").append(urlEncode(entry.getValue())); // 拼接表单 body
         }
-        log.info("provider request url: {}", alipayConfig.getGatewayUrl());
-        log.info("provider request headers: timeStamp={}, visitAuth={}", timeStamp, visitAuth);
-        log.info("provider request params: {}", params);
-        log.info("provider request body: {}", bodyBuilder);
+        log.info("provider request url: {}", alipayConfig.getGatewayUrl()); // 记录网关地址
+        log.info("provider request headers: timeStamp={}, visitAuth={}", timeStamp, visitAuth); // 记录自定义验签头
+        log.info("provider request params: {}", params); // 记录参数字典
+        log.info("provider request body: {}", bodyBuilder); // 记录最终提交 body
 
         HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
         HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()

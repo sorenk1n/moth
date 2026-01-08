@@ -33,25 +33,27 @@ public class PayMerchantManageController {
         return RestResult.ok(payMerchantService.listAll());
     }
 
-    @PostMapping("/create")
-    public RestResult<Void> create(@RequestParam String merchantNo,
-        @RequestParam String name,
-        @RequestParam(required = false) String alipayMerchantNo,
-        @RequestParam(required = false) String groupExternalId,
-        @RequestParam(required = false) String remark,
-        @RequestParam(required = false) Byte status) {
-        if (StringUtils.isAnyBlank(merchantNo, name)) {
-            return RestResult.fail(SysResultCode.PARAM_ERROR);
+    @PostMapping("/create") // 接收创建商户的 POST 请求，路径为 /merchant/create
+    public RestResult<Void> create(
+        @RequestParam String merchantNo, // 必填：商户号
+        @RequestParam String name, // 必填：商户名称
+        @RequestParam(required = false) String alipayMerchantNo, // 可选：支付宝商户号
+        @RequestParam(required = false) String groupExternalId, // 可选：商户分组外部标识
+        @RequestParam(required = false) String remark, // 可选：备注
+        @RequestParam(required = false) Byte status) 
+        { // 可选：状态
+        if (StringUtils.isAnyBlank(merchantNo, name)) { // 必填参数校验
+            return RestResult.fail(SysResultCode.PARAM_ERROR); // 返回参数错误
         }
-        PayMerchant merchant = new PayMerchant();
-        merchant.setMerchantNo(merchantNo.trim());
-        merchant.setName(name.trim());
-        merchant.setAlipayMerchantNo(StringUtils.trimToNull(alipayMerchantNo));
-        merchant.setGroupExternalId(StringUtils.trimToNull(groupExternalId));
-        merchant.setRemark(StringUtils.trimToNull(remark));
-        merchant.setStatus(status);
-        payMerchantService.create(merchant);
-        return RestResult.ok();
+        PayMerchant merchant = new PayMerchant(); // 构造实体对象
+        merchant.setMerchantNo(merchantNo.trim()); // 去除首尾空格并赋值商户号
+        merchant.setName(name.trim()); // 去除首尾空格并赋值名称
+        merchant.setAlipayMerchantNo(StringUtils.trimToNull(alipayMerchantNo)); // 空串转 null 后赋值
+        merchant.setGroupExternalId(StringUtils.trimToNull(groupExternalId)); // 空串转 null 后赋值
+        merchant.setRemark(StringUtils.trimToNull(remark)); // 空串转 null 后赋值备注
+        merchant.setStatus(status); // 直接设置状态，允许为空
+        payMerchantService.create(merchant); // 交给服务层保存
+        return RestResult.ok(); // 返回成功响应
     }
 
     @PostMapping("/updateStatus")
