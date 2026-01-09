@@ -4,6 +4,10 @@ body, div, dl, dt, dd, ul, ol, li, h1, h2, h3, h4, h5, h6, pre, form, fieldset, 
     padding: 0
 }
 
+:root {
+    --color-primary: #E60012;
+}
+
 h1, h2, h3, h4, h5, h6 {
     font-size: 14px
 }
@@ -40,12 +44,12 @@ a img {
 
 a {
     outline: none;
-    color: #333;
+    color: var(--color-primary);
     text-decoration: none
 }
 
 a:hover, .topBar a:hover, .red, .record_list li:hover .read_link a {
-    color: #3eaf7c
+    color: var(--color-primary)
 }
 
 .red1 {
@@ -57,7 +61,7 @@ a:hover, .topBar a:hover, .red, .record_list li:hover .read_link a {
 }
 
 .blue {
-    color: #5fc3f3
+    color: var(--color-primary)
 }
 
 .green {
@@ -132,6 +136,11 @@ input {
     border: none; /* padding-left: 5px; font-size: 13px;*/
     font-family: "microsoft yahei", Arial;
     *background: none
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(230, 0, 18, 0.15);
 }
 
 i, em, cite {
@@ -331,15 +340,35 @@ input::-webkit-input-placeholder, textarea::-webkit-input-placeholder {
 }
 
 .logo {
-    width: 160px;
+    width: 220px;
     float: left;
-    padding: 23px 130px 0 0;
+    padding: 18px 130px 0 0;
     display: block
 }
 
 .logo img {
-    width: auto;
-    height: 48px
+    width: 56px;
+    height: 56px;
+    max-width: 100%;
+    object-fit: contain;
+    margin-top: 4px;
+    vertical-align: middle
+}
+
+.logo .site-title {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 28px;
+    font-weight: 700;
+    font-family: "STXingkai", "YouYuan", "KaiTi", "Microsoft YaHei", serif;
+    color: var(--color-primary);
+    vertical-align: middle;
+}
+
+img[src="/pic.jpg"] {
+    max-width: 100%;
+    height: auto;
+    object-fit: contain
 }
 
 .searchBar {
@@ -360,7 +389,7 @@ input::-webkit-input-placeholder, textarea::-webkit-input-placeholder {
     height: 36px;
     line-height: 36px \9;
     vertical-align: middle;
-    border: 1px solid #3eaf7c;
+    border: 1px solid var(--color-primary);
     border-right: none;
     color: #333;
     float: left;
@@ -377,7 +406,7 @@ input::-webkit-input-placeholder, textarea::-webkit-input-placeholder {
     height: 38px;
     text-align: center;
     border-radius: 0 20px 20px 0;
-    background-color: #3eaf7c;
+    background-color: var(--color-primary);
     cursor: pointer;
 }
 
@@ -441,7 +470,7 @@ input::-webkit-input-placeholder, textarea::-webkit-input-placeholder {
 .mainNav {
     width: 100%;
     height: 48px;
-    background: #3eaf7c;
+    background: var(--color-primary);
     margin-bottom: 20px
 }
 
@@ -456,7 +485,7 @@ input::-webkit-input-placeholder, textarea::-webkit-input-placeholder {
     color: #fff;
     font-size: 16px;
     margin: 0 34px;
-    border-bottom: 2px solid #3eaf7c;
+    border-bottom: 2px solid var(--color-primary);
     transition: color .3s, background-color .3s, border .3s
 }
 
@@ -516,8 +545,8 @@ input::-webkit-input-placeholder, textarea::-webkit-input-placeholder {
 }
 
 .btn_red, .btn_ora {
-    border: 1px solid #3eaf7c;
-    background: #3eaf7c;
+    border: 1px solid var(--color-primary);
+    background: var(--color-primary);
     color: #fff
 }
 
@@ -528,8 +557,8 @@ input::-webkit-input-placeholder, textarea::-webkit-input-placeholder {
 }
 
 .btn_ora_white {
-    border: 1px solid #3eaf7c;
-    color: #3eaf7c
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary)
 }
 
 .btn_ora_white:hover {
@@ -538,7 +567,7 @@ input::-webkit-input-placeholder, textarea::-webkit-input-placeholder {
 
 .btn_link {
     padding: 2px 6px;
-    background: #3eaf7c;
+    background: var(--color-primary);
     color: #fff;
     border-radius: 2px
 }
@@ -549,7 +578,7 @@ input::-webkit-input-placeholder, textarea::-webkit-input-placeholder {
 }
 
 .btn_ora:hover, .btn_red:hover, .btn_link:hover {
-    background: #3eaf7c;
+    background: var(--color-primary);
     color: #fff
 }
 
@@ -586,7 +615,7 @@ i.vip_b {
     line-height: 22px;
     font-size: 15px;
     color: #fff;
-    background: #3eaf7c;
+    background: var(--color-primary);
     border-radius: 4px;
     margin-left: 5px;
     display: inline-block;
@@ -609,7 +638,7 @@ i.vip_b {
 }
 
 .pageBox .current, .pageBox a:hover {
-    background: #3eaf7c;
+    background: var(--color-primary);
     color: #fff
 }
 
@@ -795,7 +824,7 @@ i.vip_b {
 }
 
 .copyright .menu a:hover, .bookShelf .sj_link:hover {
-    color: #3eaf7c
+    color: var(--color-primary)
 }
 
 .rightList .more, .more_bar {
@@ -930,11 +959,26 @@ i.vip_b {
 }
 
 .layui-laypage-curr {
-    background: #3eaf7c;
+    background: var(--color-primary);
 }
 
 .layui-laypage-curr em {
     color: #fff;
+}
+
+.layui-form-checked .layui-icon,
+.layui-form-checkbox[lay-skin=primary] i {
+    border-color: var(--color-primary);
+    background-color: var(--color-primary);
+}
+
+.layui-form-onswitch {
+    border-color: var(--color-primary);
+    background-color: var(--color-primary);
+}
+
+.layui-form-radioed > i {
+    color: var(--color-primary);
 }
 
 .layui-disabled, .layui-disabled:hover {
@@ -971,7 +1015,7 @@ i.vip_b {
     margin-bottom: 10px;
     padding: 15px;
     line-height: 1.8;
-    border-left: 5px solid #16b777;
+    border-left: 5px solid var(--color-primary);
     border-radius: 0 2px 2px 0;
     background-color: #fafafa;
 }

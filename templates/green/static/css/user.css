@@ -38,7 +38,7 @@
 /*userinfo*/
 .my_l { width:198px; float:left; font-size: 13px; padding-top: 20px; }
 .my_l li a { display:block; height:42px; line-height:42px; padding-left:62px; border-left:4px solid #fff; background:url(../images/icon_user.png) no-repeat; margin-bottom:5px; color: #666 }
-.my_l li .on { background-color:#fafafa; border-left:2px solid #3eaf7c; color:#000; border-radius: 0 2px 2px 0 }
+.my_l li .on { background-color:#fafafa; border-left:2px solid var(--color-primary); color:#000; border-radius: 0 2px 2px 0 }
 .my_l .link_1 { background-position:32px -188px }
 .my_l .link_2 { background-position:32px -230px }
 .my_l .link_3 { background-position:32px -272px }

@@ -356,8 +356,8 @@
     width: 132px;
     height: 52px;
     line-height: 52px;
-    color: #3eaf7c;
-    border: 2px solid #3eaf7c;
+    color: var(--color-primary);
+    border: 2px solid var(--color-primary);
     background: #fff
 }
 
@@ -722,7 +722,7 @@
 .icon_qyzz {
     padding: 5px;
     line-height: 1;
-    background: #3eaf7c;
+    background: var(--color-primary);
     color: #fff;
     border-radius: 3px;
     display: inline-block

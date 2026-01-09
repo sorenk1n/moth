@@ -96,20 +96,20 @@ function renderDefaultMerchant(merchant) {
 
 function loadDefaultMerchant() {
     $.ajax({
-        type: "get",
-        url: "/merchant/default",
-        dataType: "json",
-        success: function (resp) {
-            if (resp && resp.code === 200) {
-                defaultMerchantCache = resp.data || null;
-                if (!defaultMerchantCache) {
+        type: "get", // GET 请求
+        url: "/merchant/default", // 获取默认商户信息
+        dataType: "json", // 期望 JSON 响应
+        success: function (resp) { // 请求成功回调
+            if (resp && resp.code === 200) { // 仅处理成功响应
+                defaultMerchantCache = resp.data || null; // 缓存默认商户
+                if (!defaultMerchantCache) { // 未返回默认商户则回退加载列表
                     loadMerchants();
                 }
-                renderDefaultMerchant(defaultMerchantCache);
+                renderDefaultMerchant(defaultMerchantCache); // 更新页面显示
             }
         },
-        error: function () {
-            loadMerchants();
+        error: function () { // 请求失败回调
+            loadMerchants(); // 失败时回退加载商户列表
         }
     });
 }

@@ -63,6 +63,8 @@ function renderMerchants(list) {
         var name = (m.name || m.remark || "");
         var statusLabel = "<span style=\"color:" + statusColor(m.status) + "\">" + statusText(m.status) + "</span>";
         var isDefault = m.isDefault === 1 ? "（当前）" : "";
+        var groupExternalId = (m.groupExternalId === null || m.groupExternalId === undefined || m.groupExternalId === "")
+            ? "-" : m.groupExternalId;
         var statusEditor = [
             "<span class=\"statusEditor\" data-id=\"" + m.id + "\" style=\"cursor:pointer;\">",
             statusLabel,
@@ -74,6 +76,7 @@ function renderMerchants(list) {
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + (m.alipayMerchantNo || "") + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + (m.md5Key || "") + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + (m.aesKey || "") + "</td>",
+            "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + groupExternalId + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + statusEditor + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">",
             "<a href=\"javascript:void(0);\" class=\"btn_default\" data-id=\"" + m.id + "\">设为默认</a>",

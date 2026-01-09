@@ -1,6 +1,13 @@
 <div th:fragment="css">
+    <link rel="icon" href="/pic.jpg">
+    <link rel="shortcut icon" href="/pic.jpg">
+    <link rel="apple-touch-icon" href="/pic.jpg">
     <link rel="stylesheet" href="/mobile/layui/css/layui.css">
     <style type="text/css">
+        :root {
+            --color-primary: #E60012;
+        }
+
         body {
             min-height: 100vh;
             position: relative;
@@ -43,6 +50,52 @@
             height: 50px;
             line-height: 48px;
             text-align: center;
+        }
+
+        img[src="/pic.jpg"] {
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+
+        a {
+            color: var(--color-primary);
+        }
+
+        .layui-btn,
+        .layui-btn-normal {
+            background-color: var(--color-primary);
+            border-color: var(--color-primary);
+            color: #fff;
+        }
+
+        .layui-btn-primary {
+            color: var(--color-primary);
+            border-color: var(--color-primary);
+        }
+
+        .layui-form-checked .layui-icon,
+        .layui-form-checkbox[lay-skin=primary] i {
+            border-color: var(--color-primary);
+            background-color: var(--color-primary);
+        }
+
+        .layui-form-onswitch {
+            border-color: var(--color-primary);
+            background-color: var(--color-primary);
+        }
+
+        .layui-form-radioed > i {
+            color: var(--color-primary);
+        }
+
+        .layui-laypage-curr .layui-laypage-em {
+            background-color: var(--color-primary);
+        }
+
+        input:focus, textarea:focus, select:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 2px rgba(230, 0, 18, 0.15);
         }
     </style>
 </div>
