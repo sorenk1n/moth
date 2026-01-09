@@ -159,9 +159,9 @@
 
     <div style="text-align: center;height: 45px;line-height: 45px">
         <a th:href="'/book/'+${book.id}+'/'+${firstBookIndexId}+'.html'" type="button"
-           style="background-color:#3eaf7c!important" class="layui-btn layui-btn-sm layui-btn-radius">开始阅读</a>
+           style="background-color:var(--color-primary)!important" class="layui-btn layui-btn-sm layui-btn-radius">开始阅读</a>
         <button type="button" id="cFavs" onclick="addInShell()"
-                style="border: 1px solid #3eaf7c;color: #3eaf7c;background-color:#fff!important"
+                style="border: 1px solid var(--color-primary);color: var(--color-primary);background-color:#fff!important"
                 class="layui-btn layui-btn-sm layui-btn-radius ">加入书架
         </button>
 
@@ -214,7 +214,7 @@
         success: function (data) {
             if (data.code == 200) {
                 if (data.data) {
-                    $("#cFavs").replaceWith("<button type=\"button\" id=\"cFavs\" style=\"border: 1px solid #3eaf7c;color: #3eaf7c;background-color:#fff!important\"  class=\"layui-btn layui-btn-sm layui-btn-radius layui-btn-warm\">已在书架</button>");
+                    $("#cFavs").replaceWith("<button type=\"button\" id=\"cFavs\" style=\"border: 1px solid var(--color-primary);color: var(--color-primary);background-color:#fff!important\"  class=\"layui-btn layui-btn-sm layui-btn-radius layui-btn-warm\">已在书架</button>");
                 }
 
 
@@ -269,7 +269,7 @@
             dataType: "json",
             success: function (data) {
                 if (data.code == 200) {
-                    $("#cFavs").replaceWith("<button type=\"button\" id=\"cFavs\" style=\"border: 1px solid #3eaf7c;color: #3eaf7c;background-color:#fff!important\"  class=\"layui-btn layui-btn-sm layui-btn-radius layui-btn-warm\">已在书架</button>");
+                    $("#cFavs").replaceWith("<button type=\"button\" id=\"cFavs\" style=\"border: 1px solid var(--color-primary);color: var(--color-primary);background-color:#fff!important\"  class=\"layui-btn layui-btn-sm layui-btn-radius layui-btn-warm\">已在书架</button>");
 
 
                 } else if (data.code == 1001) {

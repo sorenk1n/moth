@@ -457,8 +457,8 @@ html #layuicss-layer {
 }
 
 .layui-layer-btn .layui-layer-btn0 {
-    border-color: #3eaf7c;
-    background-color: #3eaf7c;
+    border-color: var(--color-primary);
+    background-color: var(--color-primary);
     color: #fff
 }
 
