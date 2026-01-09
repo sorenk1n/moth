@@ -17,9 +17,16 @@ var merchantPage = 1;
 var merchantPageSize = 10;
 var lastDefaultSwitchAt = 0;
 var DEFAULT_SWITCH_COOLDOWN_MS = 60 * 1000;
+var currentSortBy = "";
+var currentSortOrder = "";
 
 function loadMerchants() {
-    $.get("/merchant/list", function (resp) {
+    var params = {};
+    if (currentSortBy && currentSortOrder) {
+        params.sort_by = currentSortBy;
+        params.sort_order = currentSortOrder;
+    }
+    $.get("/merchant/list", params, function (resp) {
         if (!resp || resp.code !== 200) {
             layer.alert(resp ? resp.msg : "加载失败");
             return;
@@ -65,6 +72,8 @@ function renderMerchants(list) {
         var isDefault = m.isDefault === 1 ? "（当前）" : "";
         var groupExternalId = (m.groupExternalId === null || m.groupExternalId === undefined || m.groupExternalId === "")
             ? "-" : m.groupExternalId;
+        var createTime = (m.createTime === null || m.createTime === undefined || m.createTime === "")
+            ? "-" : m.createTime;
         var statusEditor = [
             "<span class=\"statusEditor\" data-id=\"" + m.id + "\" style=\"cursor:pointer;\">",
             statusLabel,
@@ -77,6 +86,7 @@ function renderMerchants(list) {
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + (m.md5Key || "") + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + (m.aesKey || "") + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + groupExternalId + "</td>",
+            "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + createTime + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + statusEditor + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">",
             "<a href=\"javascript:void(0);\" class=\"btn_default\" data-id=\"" + m.id + "\">设为默认</a>",
@@ -100,6 +110,35 @@ function renderPagedMerchants() {
     $("#merchantPageInfo").text("第 " + merchantPage + " / " + totalPages + " 页");
     $("#merchantPrev").prop("disabled", merchantPage <= 1);
     $("#merchantNext").prop("disabled", merchantPage >= totalPages);
+}
+
+function updateSortIndicators() {
+    $(".merchant-list th.sortable").each(function () {
+        var $th = $(this);
+        var sortBy = $th.data("sort");
+        var $indicator = $th.find(".sort-indicator");
+        if (sortBy === currentSortBy) {
+            $indicator.text(currentSortOrder || "");
+        } else {
+            $indicator.text("");
+        }
+    });
+}
+
+function toggleSort(sortBy) {
+    if (currentSortBy !== sortBy) {
+        currentSortBy = sortBy;
+        currentSortOrder = "asc";
+    } else if (currentSortOrder === "asc") {
+        currentSortOrder = "desc";
+    } else if (currentSortOrder === "desc") {
+        currentSortBy = "";
+        currentSortOrder = "";
+    } else {
+        currentSortOrder = "asc";
+    }
+    updateSortIndicators();
+    loadMerchants();
 }
 
 function setDefault(id) {
@@ -142,6 +181,14 @@ function updateStatus(id, status) {
 $(function () {
     loadCurrentMerchant();
     loadMerchants();
+    updateSortIndicators();
+
+    $(".merchant-list").on("click", "th.sortable", function () {
+        var sortBy = $(this).data("sort");
+        if (sortBy) {
+            toggleSort(sortBy);
+        }
+    });
 
     $("#merchantTbody").on("click", ".btn_default", function () {
         var id = $(this).data("id");

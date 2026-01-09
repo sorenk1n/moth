@@ -5,7 +5,9 @@ import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.SelectProvider;
 import org.apache.ibatis.annotations.Update;
 
 @Mapper
@@ -18,6 +20,9 @@ public interface PayMerchantMapper {
     @Select("select id, merchant_no as merchantNo, alipay_merchant_no as alipayMerchantNo, name, status, is_default as isDefault, md5_key as md5Key, aes_key as aesKey, group_external_id as groupExternalId, remark, create_time as createTime, update_time as updateTime "
         + "from pay_merchant order by is_default desc, id")
     List<PayMerchant> listAll();
+
+    @SelectProvider(type = PayMerchantSqlProvider.class, method = "listAllSorted")
+    List<PayMerchant> listAllSorted(@Param("sortBy") String sortBy, @Param("sortOrder") String sortOrder);
 
     @Select("select id, merchant_no as merchantNo, alipay_merchant_no as alipayMerchantNo, name, status, is_default as isDefault, md5_key as md5Key, aes_key as aesKey, group_external_id as groupExternalId, remark, create_time as createTime, update_time as updateTime "
         + "from pay_merchant where is_default = 1 limit 1")

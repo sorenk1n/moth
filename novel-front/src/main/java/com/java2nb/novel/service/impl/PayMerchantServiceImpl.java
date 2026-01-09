@@ -20,8 +20,8 @@ public class PayMerchantServiceImpl implements PayMerchantService {
     }
 
     @Override
-    public List<PayMerchant> listAll() {
-        return payMerchantMapper.listAll();
+    public List<PayMerchant> listAll(String sortBy, String sortOrder) {
+        return payMerchantMapper.listAllSorted(sortBy, sortOrder);
     }
 
     @Override

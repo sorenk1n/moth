@@ -13,7 +13,7 @@ public interface PayMerchantService {
     /**
      * 查询全部商户
      */
-    List<PayMerchant> listAll();
+    List<PayMerchant> listAll(String sortBy, String sortOrder);
 
     /**
      * 查询默认商户

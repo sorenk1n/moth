@@ -4,7 +4,7 @@ import com.java2nb.novel.entity.PayMerchant;
 import com.java2nb.novel.service.PayMerchantService;
 import io.github.xxyopen.model.resp.RestResult;
 import io.github.xxyopen.model.resp.SysResultCode;
-import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +22,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class PayMerchantManageController {
 
     private final PayMerchantService payMerchantService;
+    private static final Map<String, String> SORT_BY_WHITELIST = Map.of(
+        "merchant_no", "merchant_no",
+        "name", "name",
+        "aes_key", "aes_key",
+        "group_external_id", "group_external_id",
+        "create_time", "create_time"
+    );
 
     @GetMapping("/default")
     public RestResult<PayMerchant> getDefault() {
@@ -29,8 +36,23 @@ public class PayMerchantManageController {
     }
 
     @GetMapping("/list")
-    public RestResult<List<PayMerchant>> listAll() {
-        return RestResult.ok(payMerchantService.listAll());
+    public RestResult<?> listAll(
+        @RequestParam(required = false, name = "sort_by") String sortBy,
+        @RequestParam(required = false, name = "sort_order") String sortOrder) {
+        String normalizedSortBy = StringUtils.trimToNull(sortBy);
+        String normalizedSortOrder = StringUtils.trimToNull(sortOrder);
+        if (normalizedSortBy != null || normalizedSortOrder != null) {
+            String mappedSortBy = SORT_BY_WHITELIST.get(normalizedSortBy);
+            if (mappedSortBy == null) {
+                return RestResult.fail(SysResultCode.PARAM_ERROR);
+            }
+            String orderLower = normalizedSortOrder == null ? null : normalizedSortOrder.toLowerCase();
+            if (!"asc".equals(orderLower) && !"desc".equals(orderLower)) {
+                return RestResult.fail(SysResultCode.PARAM_ERROR);
+            }
+            return RestResult.ok(payMerchantService.listAll(mappedSortBy, orderLower));
+        }
+        return RestResult.ok(payMerchantService.listAll(null, null));
     }
 
     @PostMapping("/create") // 接收创建商户的 POST 请求，路径为 /merchant/create
