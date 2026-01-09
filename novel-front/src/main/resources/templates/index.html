@@ -3,12 +3,12 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 
 <head th:replace="~{common/header :: common_head(~{::title},~{::meta},~{::link},~{})}">
-    <title th:text="${application.website.name}+'_原创小说网站'"></title>
+    <title th:text="${application.website.name}"></title>
     <meta name="keywords" th:content="${application.website.keyword}"/>
     <meta name="description"
           th:content="${application.website.description}"/>
-    <link href="/favicon.ico" type="image/x-icon" rel="shortcut icon"/>
-    <link href="/favicon.ico" type="image/x-icon" rel="Bookmark"/>
+    <link href="/pic.jpg" type="image/x-icon" rel="shortcut icon"/>
+    <link href="/pic.jpg" type="image/x-icon" rel="Bookmark"/>
     <link rel="stylesheet" href="/css/main.css"/>
 </head>
 <body>
@@ -180,12 +180,6 @@
 
     </div>
 </div>
-<div class="friend_link">
-    <div class="box_center cf" id="friendLink">
-        <span>友情链接：</span>
-    </div>
-</div>
-
 <div th:replace="~{common/footer :: footer}">
 </div>
 

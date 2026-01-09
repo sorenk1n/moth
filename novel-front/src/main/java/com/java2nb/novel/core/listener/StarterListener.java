@@ -31,8 +31,8 @@ public class StarterListener implements ServletContextInitializer {
             setKeyword(websiteProperties.getKeyword());
             setDescription(websiteProperties.getDescription());
             setQq(websiteProperties.getQq());
-            setLogo("/images/logo.png");
-            setLogoDark("/images/logo_white.png");
+            setLogo("/pic.jpg");
+            setLogoDark("/pic.jpg");
         }}));
     }
 }

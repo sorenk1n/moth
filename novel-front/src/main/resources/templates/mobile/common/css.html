@@ -1,4 +1,7 @@
 <div th:fragment="css">
+    <link rel="icon" href="/pic.jpg">
+    <link rel="shortcut icon" href="/pic.jpg">
+    <link rel="apple-touch-icon" href="/pic.jpg">
     <link rel="stylesheet" href="/mobile/layui/css/layui.css">
     <style type="text/css">
         body {
@@ -43,6 +46,12 @@
             height: 50px;
             line-height: 48px;
             text-align: center;
+        }
+
+        img[src="/pic.jpg"] {
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
         }
     </style>
 </div>

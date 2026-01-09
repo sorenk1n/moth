@@ -331,15 +331,35 @@ input::-webkit-input-placeholder, textarea::-webkit-input-placeholder {
 }
 
 .logo {
-    width: 160px;
+    width: 220px;
     float: left;
-    padding: 23px 130px 0 0;
+    padding: 18px 130px 0 0;
     display: block
 }
 
 .logo img {
-    width: auto;
-    height: 48px
+    width: 56px;
+    height: 56px;
+    max-width: 100%;
+    object-fit: contain;
+    margin-top: 4px;
+    vertical-align: middle
+}
+
+.logo .site-title {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 28px;
+    font-weight: 700;
+    font-family: "STXingkai", "YouYuan", "KaiTi", "Microsoft YaHei", serif;
+    color: #e24545;
+    vertical-align: middle;
+}
+
+img[src="/pic.jpg"] {
+    max-width: 100%;
+    height: auto;
+    object-fit: contain
 }
 
 .searchBar {

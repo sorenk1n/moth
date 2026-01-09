@@ -46,7 +46,9 @@ public class FrontNovelApplication {
      */
     @Bean
     public TaskScheduler taskScheduler() {
+        // 自定义调度器线程池，避免默认单线程导致多个 @Scheduled 任务串行阻塞
         ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
+        // 设置线程池大小，允许并行执行多个定时任务
         taskScheduler.setPoolSize(5);
         return taskScheduler;
     }
