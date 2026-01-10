@@ -16,6 +16,8 @@
         .current-box .status { margin-left: 10px; }
         .merchant-list table { width: 100%; border-collapse: collapse; }
         .merchant-list th, .merchant-list td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #f1f1f1; }
+        .merchant-list th.sortable { cursor: pointer; user-select: none; }
+        .merchant-list th.sortable .sort-indicator { margin-left: 6px; color: #888; font-size: 12px; }
         .merchant-actions a { margin-right: 8px; }
         .statusEditor {
             display: inline-block;
@@ -61,10 +63,12 @@
         <table>
             <thead>
             <tr>
-                <th>商户</th>
+                <th class="sortable" data-sort="merchant_no">商户号<span class="sort-indicator"></span></th>
+                <th class="sortable" data-sort="name">商户名称<span class="sort-indicator"></span></th>
                 <th>支付宝商户号</th>
                 <th>MD5</th>
-                <th>AES</th>
+                <th class="sortable" data-sort="aes_key">AES<span class="sort-indicator"></span></th>
+                <th class="sortable" data-sort="group_external_id">群组<span class="sort-indicator"></span></th>
                 <th>状态</th>
                 <th>操作</th>
             </tr>

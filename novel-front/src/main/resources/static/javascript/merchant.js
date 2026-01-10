@@ -68,6 +68,8 @@ function renderMerchants(list) {
     $tbody.empty();
     list.forEach(function (m) {
         var name = (m.name || m.remark || "");
+        var merchantNo = (m.merchantNo === null || m.merchantNo === undefined || m.merchantNo === "")
+            ? "-" : m.merchantNo;
         var statusLabel = "<span style=\"color:" + statusColor(m.status) + "\">" + statusText(m.status) + "</span>";
         var isDefault = m.isDefault === 1 ? "（当前）" : "";
         var groupExternalId = (m.groupExternalId === null || m.groupExternalId === undefined || m.groupExternalId === "")
@@ -81,12 +83,12 @@ function renderMerchants(list) {
         ].join("");
         var row = [
             "<tr data-id=\"" + m.id + "\">",
+            "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + merchantNo + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + name + isDefault + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + (m.alipayMerchantNo || "") + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + (m.md5Key || "") + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + (m.aesKey || "") + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + groupExternalId + "</td>",
-            "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + createTime + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">" + statusEditor + "</td>",
             "<td style=\"padding:8px;border-bottom:1px solid #f1f1f1;\">",
             "<a href=\"javascript:void(0);\" class=\"btn_default\" data-id=\"" + m.id + "\">设为默认</a>",

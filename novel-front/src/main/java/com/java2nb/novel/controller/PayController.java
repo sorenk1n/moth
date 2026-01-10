@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import java.net.URLEncoder;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.ConnectException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -564,7 +565,14 @@ public class PayController extends BaseController {
         }
         HttpRequest req = reqBuilder.POST(HttpRequest.BodyPublishers.ofString(bodyBuilder.toString())).build();
 
-        HttpResponse<String> gatewayResp = client.send(req, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> gatewayResp;
+        try {
+            gatewayResp = client.send(req, HttpResponse.BodyHandlers.ofString());
+        } catch (ConnectException ex) {
+            log.warn("provider connect failed: {}", alipayConfig.getGatewayUrl(), ex);
+            httpResponse.sendError(HttpServletResponse.SC_BAD_GATEWAY, "pay provider is unreachable");
+            return;
+        }
         httpResponse.setStatus(gatewayResp.statusCode());
         String respContentType = gatewayResp.headers().firstValue("Content-Type").orElse("");
         if (respContentType.toLowerCase().contains("application/json")) {

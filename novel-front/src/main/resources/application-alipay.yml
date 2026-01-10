@@ -14,7 +14,7 @@ alipay:
   #编码
   charset: utf-8
   #支付网关（服务商通道）
-  gateway-url: http://47.99.180.68:8060/api/pay/operPay
+  gateway-url: https://tzpay.zzfangsui.fun/api/pay/operPay
   #自定义验签密钥（需向运营获取）
   md5-key: cxTWgAyMrtTiYEiH
   aes-key: cxTWgAyMrtTiYEiH
