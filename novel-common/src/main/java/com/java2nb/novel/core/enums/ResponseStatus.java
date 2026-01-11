@@ -57,6 +57,19 @@ public enum ResponseStatus implements IResultCode {
     FILE_SIZE_LIMIT(10003,"文件大小超出限制"),
 
     /**
+     * openapi相关错误
+     */
+    OPENAPI_AUTH_FAIL(20001, "openapi鉴权失败"),
+    OPENAPI_APP_DISABLED(20002, "openapi接入方不可用"),
+    OPENAPI_SIGN_ERROR(20003, "签名错误"),
+    OPENAPI_TIMESTAMP_EXPIRED(20004, "请求已过期"),
+    OPENAPI_NONCE_REPLAY(20005, "重复请求"),
+    OPENAPI_RATE_LIMIT(20006, "请求过于频繁"),
+    OPENAPI_ALIPAY_CONFLICT(20007, "支付宝用户已绑定其他外部用户"),
+    OPENAPI_ORDER_CONFLICT(20008, "外部订单已存在"),
+    OPENAPI_PARAM_ERROR(20009, "openapi参数错误"),
+
+    /**
      * 其他通用错误
      * */
     PASSWORD_ERROR(88001,"密码错误！");

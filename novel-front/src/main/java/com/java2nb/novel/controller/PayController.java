@@ -6,6 +6,7 @@ import com.java2nb.novel.core.bean.UserDetails;
 import com.java2nb.novel.core.config.AlipayProperties;
 import com.java2nb.novel.core.utils.ThreadLocalUtil;
 import com.java2nb.novel.entity.PayMerchant;
+import com.java2nb.novel.openapi.OpenApiOrderService;
 import com.java2nb.novel.service.OrderService;
 import com.java2nb.novel.service.PayMerchantService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -53,6 +54,7 @@ public class PayController extends BaseController {
 
     private final OrderService orderService;    // 充值订单服务
     private final PayMerchantService payMerchantService;
+    private final OpenApiOrderService openApiOrderService;
 
 
     /**
@@ -226,6 +228,7 @@ public class PayController extends BaseController {
             if ("TRADE_SUCCESS".equals(tradeStatus)) {
                 //支付成功
                 orderService.updatePayOrder(Long.parseLong(outTradeNo), tradeNo, 1);
+                openApiOrderService.handlePaySuccess(Long.parseLong(outTradeNo), tradeNo);
             }
 
             out.println("success");

@@ -5,6 +5,8 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.boot.web.servlet.ServletComponentScan;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.ApplicationContext;
@@ -18,10 +20,17 @@ import java.sql.Connection;
 
 @EnableTransactionManagement
 @ServletComponentScan
-@MapperScan("com.java2nb.*.dao")
+@MapperScan({"com.java2nb.*.dao", "com.java2nb.*.mapper"})
 @SpringBootApplication(exclude = {
     org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration.class
 })
+@ComponentScan(
+    basePackages = "com.java2nb",
+    excludeFilters = @ComponentScan.Filter(
+        type = FilterType.ASSIGNABLE_TYPE,
+        classes = com.java2nb.novel.core.advice.CommonExceptionHandler.class
+    )
+)
 @EnableCaching
 @Slf4j
 public class AdminApplication {
