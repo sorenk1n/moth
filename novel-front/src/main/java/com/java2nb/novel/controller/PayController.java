@@ -495,6 +495,8 @@ public class PayController extends BaseController {
         HttpRequest req = reqBuilder.POST(HttpRequest.BodyPublishers.ofString(bodyBuilder.toString())).build();
 
         HttpResponse<String> gatewayResp = client.send(req, HttpResponse.BodyHandlers.ofString());
+        logGatewayResponse("支付网关  ------------------------proxy gateway response", gatewayResp.statusCode(), gatewayResp.body(),
+            null, externalId, null, action);
         httpResponse.setStatus(gatewayResp.statusCode());
         // 根据网关返回内容类型透传，便于前端正确解析 JSON
         String respContentType = gatewayResp.headers().firstValue("Content-Type").orElse("");
@@ -576,6 +578,8 @@ public class PayController extends BaseController {
             httpResponse.sendError(HttpServletResponse.SC_BAD_GATEWAY, "pay provider is unreachable");
             return;
         }
+        logGatewayResponse("provider response", gatewayResp.statusCode(), gatewayResp.body(),
+            merchantTradeNo, externalId, groupExternalId, null);
         httpResponse.setStatus(gatewayResp.statusCode());
         String respContentType = gatewayResp.headers().firstValue("Content-Type").orElse("");
         if (respContentType.toLowerCase().contains("application/json")) {
@@ -602,6 +606,25 @@ public class PayController extends BaseController {
         }
         String raw = builder + StringUtils.defaultString(visitAuth) + aesPrefix;
         return DigestUtils.md5Hex(raw);
+    }
+
+    private void logGatewayResponse(String label, int statusCode, String body, String merchantTradeNo,
+        String externalId, String groupExternalId, String action) {
+        String code = null;
+        String msg = null;
+        String subMsg = null;
+        try {
+            JSONObject json = JSONObject.parseObject(body);
+            code = Optional.ofNullable(json.get("code")).map(String::valueOf).orElse(null);
+            msg = Optional.ofNullable(json.get("msg")).map(String::valueOf).orElse(null);
+            subMsg = Optional.ofNullable(json.get("subMsg")).map(String::valueOf).orElse(null);
+        } catch (Exception ex) {
+            // ignore non-JSON response
+        }
+        log.info(
+            "{}: status={}, code={}, msg={}, subMsg={}, body={}, merTradeNo={}, externalId={}, groupExternalId={}, action={}",
+            label, statusCode, code, msg, subMsg, body, merchantTradeNo, externalId, groupExternalId, action
+        );
     }
 
     private String extractFormAction(String formHtml) {
