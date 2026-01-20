@@ -149,6 +149,26 @@ function buildVisitAuth(ts, md5Key, aesKey) {
     }).toString(); // Base64
 }
 
+function buildGatewayError(data) {
+    if (!data) {
+        return null;
+    }
+    var code = data.code || data.errCode || data.errorCode;
+    var msg = data.msg || data.message || data.errorMsg;
+    var subMsg = data.subMsg || data.subMessage;
+    var parts = [];
+    if (code !== undefined && code !== null && code !== "") {
+        parts.push("错误码：" + code);
+    }
+    if (msg) {
+        parts.push(msg);
+    }
+    if (subMsg) {
+        parts.push(subMsg);
+    }
+    return parts.length ? parts.join("\n") : null;
+}
+
 // 阿里接口常用时间戳格式 yyyy-MM-dd HH:mm:ss
 function formatTimestamp() {
     var d = new Date();
@@ -295,7 +315,12 @@ var UserPay = {
                             return;
                         }
                         // 无 pay_url 时提示返回内容
-                        layer.alert(JSON.stringify(data));
+                        var err = buildGatewayError(data);
+                        if (err) {
+                            layer.alert(err);
+                        } else {
+                            layer.alert(JSON.stringify(data));
+                        }
                         return;
                     } catch (e) {
                         // 不是 JSON，按表单处理
@@ -308,8 +333,21 @@ var UserPay = {
                         document.write(resp); // 若被拦截则在当前页写入
                     }
                 },
-                error: function () {
-                    layer.alert("支付请求失败"); // 异常或 4xx/5xx 提示
+                error: function (xhr) {
+                    var msg = "支付请求失败";
+                    try {
+                        var text = xhr && xhr.responseText;
+                        if (text) {
+                            var data = JSON.parse(text);
+                            var err = buildGatewayError(data);
+                            if (err) {
+                                msg = err;
+                            }
+                        }
+                    } catch (e) {
+                        // ignore parse error
+                    }
+                    layer.alert(msg); // 异常或 4xx/5xx 提示
                 }
             });
         });

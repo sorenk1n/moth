@@ -22,3 +22,7 @@ thread:
     keep-alive-time: 10
     #队列大小
     queue-size: 100
+#日志级别
+logging:
+  level:
+    ShardingSphere-SQL: WARN

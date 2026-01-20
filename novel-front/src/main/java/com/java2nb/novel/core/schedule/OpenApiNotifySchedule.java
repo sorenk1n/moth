@@ -11,7 +11,7 @@ public class OpenApiNotifySchedule {
 
     private final OpenApiNotifyService openApiNotifyService;
 
-    @Scheduled(fixedDelay = 3000)
+    // @Scheduled(fixedDelay = 3000)
     public void processNotifyTasks() {
         openApiNotifyService.processDueTasks(50);
     }

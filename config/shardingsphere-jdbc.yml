@@ -23,28 +23,28 @@ dataSources:
 # 规则配置
 rules:
   - !SINGLE
-    tables:
-      - "*.*"
+      tables:
+        - "*.*"
   - !SHARDING
-    tables: # 数据分片规则配置
-      book_content:
-        # 分库策略，缺省表示使用默认分库策略
-        actualDataNodes: ds_${1}.book_content${0..9}
-        # 分表策略
-        tableStrategy:
-          standard:
-            # 分片列名称
-            shardingColumn: index_id
-            # 分片算法名称
-            shardingAlgorithmName: bookContentSharding
+      tables: # 数据分片规则配置
+        book_content:
+          # 分库策略，缺省表示使用默认分库策略
+          actualDataNodes: ds_${1}.book_content${0..9}
+          # 分表策略
+          tableStrategy:
+            standard:
+              # 分片列名称
+              shardingColumn: index_id
+              # 分片算法名称
+              shardingAlgorithmName: bookContentSharding
 
-    shardingAlgorithms:
-      bookContentSharding:
-        # 行表达式分片算法，使用 Groovy 的表达式，提供对 SQL 语句中的 = 和 IN 的分片操作支持
-        type: INLINE
-        props:
-          # 分片算法的行表达式
-          algorithm-expression: book_content${index_id % 10}
+      shardingAlgorithms:
+        bookContentSharding:
+          # 行表达式分片算法，使用 Groovy 的表达式，提供对 SQL 语句中的 = 和 IN 的分片操作支持
+          type: INLINE
+          props:
+            # 分片算法的行表达式
+            algorithm-expression: book_content${index_id % 10}
 
 
 

@@ -11,7 +11,7 @@ public class PayMerchantSqlProvider {
         String baseSql = "select id, merchant_no as merchantNo, alipay_merchant_no as alipayMerchantNo, "
             + "name, status, is_default as isDefault, md5_key as md5Key, aes_key as aesKey, "
             + "group_external_id as groupExternalId, remark, create_time as createTime, update_time as updateTime "
-            + "from pay_merchant";
+            + "from pay_merchant_b";
         if (StringUtils.isBlank(sortBy) || StringUtils.isBlank(sortOrder)) {
             return baseSql + " order by is_default desc, id";
         }

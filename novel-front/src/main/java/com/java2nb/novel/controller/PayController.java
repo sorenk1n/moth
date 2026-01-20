@@ -101,20 +101,18 @@ public class PayController extends BaseController {
         String externalGoodsType = Optional.ofNullable(request.getParameter("externalGoodsType"))
             .filter(StringUtils::isNotBlank)
             .orElse("9");
-        // 客户端 IP，优先取入参，否则取请求头/remoteAddr
-        String clientIp = Optional.ofNullable(request.getParameter("clientIp"))
-            .filter(StringUtils::isNotBlank)
-            .orElseGet(() -> resolveClientIp(request));
+        // 客户端 IP：必须取请求头/remoteAddr（浏览器无法可信提供真实 IP）
+        String clientIp = resolveClientIp(request);
         // 通知/回跳/退出地址（可根据实际调整，默认使用演示地址）
         String merchantPayNotifyUrl = Optional.ofNullable(request.getParameter("merchantPayNotifyUrl"))
             .filter(StringUtils::isNotBlank)
-            .orElse("http://www.dijiazf.com/pay/notify"); // 业务支付结果异步通知
+            .orElse("https://pay.hongxinchenzf.com/pay/notify"); // 业务支付结果异步通知
         String riskControlNotifyUrl = Optional.ofNullable(request.getParameter("riskControlNotifyUrl"))
             .filter(StringUtils::isNotBlank)
-            .orElse("http://www.dijiazf.com/pay/riskNotify"); // 风控通知回调
+            .orElse("https://pay.hongxinchenzf.com/pay/riskNotify"); // 风控通知回调
         String quitUrl = Optional.ofNullable(request.getParameter("quitUrl"))
             .filter(StringUtils::isNotBlank)
-            .orElse("http://www.dijiazf.com/quit"); // 用户取消/退出时回跳地址
+            .orElse("https://pay.hongxinchenzf.com/quit"); // 用户取消/退出时回跳地址
         // 使用配置文件中的 return-url
         returnUrl = alipayConfig.getReturnUrl();
         // 自定义总金额（如网关需要 totalAmount 字段），默认等于 payAmount
@@ -394,7 +392,7 @@ public class PayController extends BaseController {
      */
     private String resolveClientIp(HttpServletRequest request) {
         String[] headerCandidates = {
-            "X-Forwarded-For", "Proxy-Client-IP", "WL-Proxy-Client-IP",
+            "X-Forwarded-For", "X-Real-IP", "Proxy-Client-IP", "WL-Proxy-Client-IP",
             "HTTP_CLIENT_IP", "HTTP_X_FORWARDED_FOR"
         };
         for (String header : headerCandidates) {

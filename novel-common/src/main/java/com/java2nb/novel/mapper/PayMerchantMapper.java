@@ -14,33 +14,33 @@ import org.apache.ibatis.annotations.Update;
 public interface PayMerchantMapper {
 
     @Select("select id, merchant_no as merchantNo, alipay_merchant_no as alipayMerchantNo, name, status, is_default as isDefault, md5_key as md5Key, aes_key as aesKey, group_external_id as groupExternalId, remark, create_time as createTime, update_time as updateTime "
-        + "from pay_merchant where status in (1,2) order by id")
+        + "from pay_merchant_b where status in (1,2) order by id")
     List<PayMerchant> listActive();
 
     @Select("select id, merchant_no as merchantNo, alipay_merchant_no as alipayMerchantNo, name, status, is_default as isDefault, md5_key as md5Key, aes_key as aesKey, group_external_id as groupExternalId, remark, create_time as createTime, update_time as updateTime "
-        + "from pay_merchant order by is_default desc, id")
+        + "from pay_merchant_b order by is_default desc, id")
     List<PayMerchant> listAll();
 
     @SelectProvider(type = PayMerchantSqlProvider.class, method = "listAllSorted")
     List<PayMerchant> listAllSorted(@Param("sortBy") String sortBy, @Param("sortOrder") String sortOrder);
 
     @Select("select id, merchant_no as merchantNo, alipay_merchant_no as alipayMerchantNo, name, status, is_default as isDefault, md5_key as md5Key, aes_key as aesKey, group_external_id as groupExternalId, remark, create_time as createTime, update_time as updateTime "
-        + "from pay_merchant where is_default = 1 limit 1")
+        + "from pay_merchant_b where is_default = 1 limit 1")
     PayMerchant findDefault();
 
-    @Insert("insert into pay_merchant (merchant_no, alipay_merchant_no, name, status, is_default, md5_key, aes_key, group_external_id, remark) "
+    @Insert("insert into pay_merchant_b (merchant_no, alipay_merchant_no, name, status, is_default, md5_key, aes_key, group_external_id, remark) "
         + "values (#{merchantNo}, #{alipayMerchantNo}, #{name}, #{status}, #{isDefault}, #{md5Key}, #{aesKey}, #{groupExternalId}, #{remark})")
     int insert(PayMerchant merchant);
 
-    @Update("update pay_merchant set status = #{status} where id = #{id}")
+    @Update("update pay_merchant_b set status = #{status} where id = #{id}")
     int updateStatus(Long id, Byte status);
 
-    @Update("update pay_merchant set is_default = 0")
+    @Update("update pay_merchant_b set is_default = 0")
     int clearDefault();
 
-    @Update("update pay_merchant set is_default = 1 where id = #{id}")
+    @Update("update pay_merchant_b set is_default = 1 where id = #{id}")
     int setDefault(Long id);
 
-    @Delete("delete from pay_merchant where id = #{id}")
+    @Delete("delete from pay_merchant_b where id = #{id}")
     int deleteById(Long id);
 }
