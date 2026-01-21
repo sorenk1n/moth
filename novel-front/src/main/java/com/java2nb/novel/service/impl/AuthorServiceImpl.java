@@ -9,6 +9,7 @@ import com.java2nb.novel.service.AuthorService;
 import io.github.xxyopen.model.page.PageBean;
 import io.github.xxyopen.model.page.builder.pagehelper.PageBuilder;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.mybatis.dynamic.sql.render.RenderingStrategies;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ import static org.mybatis.dynamic.sql.select.SelectDSL.select;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthorServiceImpl implements AuthorService {
 
     private final AuthorMapper authorMapper;
@@ -114,6 +116,19 @@ public class AuthorServiceImpl implements AuthorService {
 
     @Override
     public void saveDailyIncomeSta(AuthorIncomeDetail authorIncomeDetail) {
+        if (authorIncomeDetail.getUserId() == null && authorIncomeDetail.getAuthorId() != null) {
+            authorMapper.selectOne(select(AuthorDynamicSqlSupport.userId)
+                .from(AuthorDynamicSqlSupport.author)
+                .where(AuthorDynamicSqlSupport.id, isEqualTo(authorIncomeDetail.getAuthorId()))
+                .build()
+                .render(RenderingStrategies.MYBATIS3)).ifPresent(author ->
+                authorIncomeDetail.setUserId(author.getUserId()));
+        }
+        if (authorIncomeDetail.getUserId() == null) {
+            log.warn("skip author income detail insert: missing userId, authorId={}, bookId={}, incomeDate={}",
+                authorIncomeDetail.getAuthorId(), authorIncomeDetail.getBookId(), authorIncomeDetail.getIncomeDate());
+            return;
+        }
         authorIncomeDetailMapper.insertSelective(authorIncomeDetail);
     }
 

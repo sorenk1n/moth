@@ -81,10 +81,10 @@ public class PayController extends BaseController {
         // 透传前端的验签数据，后续提交到网关时一并带上
         String timeStampHeader = request.getHeader("timeStamp");
         String visitAuthHeader = request.getHeader("visitAuth");
-        // 外部商户标识（网关必填），前端传递或使用默认值
+        // 外部商户标识（网关必填），后续强制使用默认商户号
         String externalId = Optional.ofNullable(request.getParameter("externalId"))
             .filter(StringUtils::isNotBlank)
-            .orElse("888007");
+            .orElse(null);
         // 支付渠道，默认 1 表示支付宝
         String payChannel = Optional.ofNullable(request.getParameter("payChannel"))
             .filter(StringUtils::isNotBlank)
@@ -150,6 +150,14 @@ public class PayController extends BaseController {
                 defaultMerchant.getAesKey())) {
                 httpResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     "default merchant md5/aes is not configured");
+                return;
+            }
+            externalId = Optional.ofNullable(defaultMerchant.getMerchantNo())
+                .filter(StringUtils::isNotBlank)
+                .orElse(externalId);
+            if (StringUtils.isBlank(externalId)) {
+                httpResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "default merchant externalId is not configured");
                 return;
             }
             String groupExternalId = StringUtils.trimToNull(defaultMerchant.getGroupExternalId());
@@ -239,14 +247,57 @@ public class PayController extends BaseController {
     }
 
     /**
+     * 服务商支付结果通知（merPayNotifyUrl）
+     */
+    @SneakyThrows
+    @PostMapping("notify")
+    public void providerPayNotify(HttpServletRequest request, HttpServletResponse httpResponse) {
+        httpResponse.setContentType("text/plain;charset=utf-8");
+
+        if (!verifyVisitAuth(request, httpResponse)) {
+            httpResponse.getWriter().write("fail");
+            return;
+        }
+
+        String merchantTradeNo = request.getParameter("merchantTradeNo");
+        String tradeStatus = request.getParameter("tradeStatus");
+        String thirdOutTradeNo = request.getParameter("thirdOutTradeNo");
+        String externalId = request.getParameter("externalId");
+        String platformOutTradeNo = request.getParameter("platformOutTradeNo");
+        String totalAmount = request.getParameter("totalAmount");
+        String attachInfo = request.getParameter("attachInfo");
+
+        log.info(
+            "回调provider notify: merchantTradeNo={}, tradeStatus={}, thirdOutTradeNo={}, externalId={}, platformOutTradeNo={}, totalAmount={}, attachInfo={}",
+            merchantTradeNo, tradeStatus, thirdOutTradeNo, externalId, platformOutTradeNo, totalAmount, attachInfo
+        );
+
+        if (StringUtils.isBlank(merchantTradeNo)) {
+            httpResponse.getWriter().write("fail");
+            return;
+        }
+
+        if ("TRADE_SUCCESS".equalsIgnoreCase(tradeStatus)) {
+            orderService.updatePayOrder(Long.parseLong(merchantTradeNo), thirdOutTradeNo, 1);
+            openApiOrderService.handlePaySuccess(Long.parseLong(merchantTradeNo), thirdOutTradeNo);
+        }
+
+        httpResponse.getWriter().write("success");
+    }
+
+    /**
      * 基于自定义对称校验的防刷防伪逻辑：
      * 1) 前端用 md5Key 构造 md5(md5Key:timeStamp)，再用 aesKey 加密得到 visitAuth。
      * 2) 后端用相同算法反推 expected，与请求头的 visitAuth 比对。
      * 目的：确保请求来自受控前端，避免任意脚本直接 POST /pay/aliPay。
      */
     private boolean verifyVisitAuth(HttpServletRequest request, HttpServletResponse httpResponse) throws Exception {
-        String timeStamp = request.getHeader("timeStamp");   // 由前端生成的时间戳，参与摘要计算
-        String visitAuth = request.getHeader("visitAuth");   // 由前端计算的加密签名
+        String timeStamp = Optional.ofNullable(request.getHeader("timeStamp"))
+            .filter(StringUtils::isNotBlank)
+            .orElse(request.getParameter("timeStamp"));   // 由前端生成的时间戳，参与摘要计算
+        String visitAuth = Optional.ofNullable(request.getHeader("visitAuth"))
+            .filter(StringUtils::isNotBlank)
+            .orElse(request.getParameter("visitAuth"));   // 由前端计算的加密签名
         if (StringUtils.isAnyBlank(timeStamp, visitAuth)) {  // 缺少头部直接视为非法请求
             httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "missing timeStamp/visitAuth");
             return false;
